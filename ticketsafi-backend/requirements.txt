@@ -1,0 +1,27 @@
+Django==5.0.2
+djangorestframework==3.14.0
+django-cors-headers==4.3.1
+
+#Authentication
+
+django-allauth==0.61.1
+dj-rest-auth==5.0.2
+djangorestframework-simplejwt==5.3.1
+
+#Database & Environment
+
+psycopg2-binary==2.9.9
+python-decouple==3.8
+
+#Image Processing (for Event Posters)
+
+Pillow==10.2.0
+
+#Async Tasks (M-Pesa & Emails)
+
+celery==5.3.6
+redis==5.0.1
+
+#M-Pesa SDK (We will wrap this later, but good to have)
+
+django-daraja

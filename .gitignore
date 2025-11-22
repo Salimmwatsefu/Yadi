@@ -1,0 +1,29 @@
+--- Global Environments & Dependency Folders ---
+
+.env
+.venv/
+node_modules/
+
+Ignore contents of core folders, but keep the folders themselves.
+
+/ticketsafi-backend/.venv/
+/ticketsafi-web/node_modules/
+/ticketsafi-web/dist/
+
+--- Delegated Ignores ---
+
+/ticketsafi-backend/.gitignore
+/ticketsafi-web/.gitignore
+
+--- Global Artifacts ---
+
+*.sqlite3
+db.sqlite3
+/media/
+
+--- IDE/OS Files ---
+
+.idea/
+.vscode/
+Thumbs.db
+.DS_Store

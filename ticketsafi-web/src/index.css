@@ -1,0 +1,79 @@
+@import "tailwindcss";
+
+/* --- THEME CONFIGURATION (Tailwind v4) --- */
+@theme {
+  /* 1. Typography */
+  --font-sans: 'Inter', sans-serif;
+  --font-heading: 'Outfit', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  /* 2. The "Void Black" Palette */
+  --color-background: #09090b; /* Zinc 950 */
+  --color-surface: #18181b;    /* Zinc 900 */
+  --color-surface-highlight: #27272a; /* Zinc 800 */
+
+  /* 3. Brand Colors */
+  --color-primary: #ec4899;       /* Pink 500 */
+  --color-primary-hover: #db2777; /* Pink 600 */
+  
+  --color-secondary: #8b5cf6;     /* Violet 500 */
+  
+  --color-success: #10B981;       /* M-Pesa Green */
+  --color-destructive: #EF4444;   /* Red 500 */
+
+  /* 4. Custom Shadows (Glow Effects) */
+  --shadow-neon: 0 0 20px rgba(236, 72, 153, 0.5);
+  --shadow-glass: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  
+  /* 5. Animations */
+  --animate-fade-in: fadeIn 0.5s ease-out;
+  --animate-slide-up: slideUp 0.5s ease-out;
+}
+
+/* --- STANDARD CSS RESETS --- */
+body {
+  background-color: var(--color-background);
+  color: #ffffff;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading);
+}
+
+/* --- UTILITY CLASSES (Gradients) --- */
+/* In v4, we can just use standard CSS classes for complex gradients */
+.bg-neon-gradient {
+  background: linear-gradient(to right, #ec4899, #8b5cf6);
+}
+
+.bg-ocean-gradient {
+  background: linear-gradient(to right, #3b82f6, #06b6d4);
+}
+
+/* --- ANIMATION KEYFRAMES --- */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+/* --- SCROLLBAR --- */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-surface);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-surface-highlight);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #3f3f46;
+}
