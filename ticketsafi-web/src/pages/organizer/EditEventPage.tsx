@@ -103,7 +103,7 @@ const EditEventPage = () => {
 
   const handleTierChange = (index: number, field: keyof TierFormData, value: string) => {
     const newTiers = [...tiers];
-    newTiers[index][field] = value as any;
+    (newTiers[index] as any)[field] = value;
     setTiers(newTiers);
   };
 
