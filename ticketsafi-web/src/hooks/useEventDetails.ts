@@ -50,7 +50,7 @@ export const useEventDetails = (eventId: string | undefined) => {
                     }),
                     location: data.location_name,
                     imageUrl: data.poster_image 
-                        ? (data.poster_image.startsWith('http') ? data.poster_image : `http://127.0.0.1:8000${data.poster_image}`)
+                        ? (data.poster_image.startsWith('http') ? data.poster_image : `${api.defaults.baseURL}${data.store.logo_image}`)
                         : 'https://placehold.co/600x400/18181b/ffffff?text=No+Image',
                     price: '0', // Not used in details header usually
                     category: 'Concert',
@@ -69,7 +69,7 @@ export const useEventDetails = (eventId: string | undefined) => {
     name: data.store.name,
     slug: data.store.slug,
     logo_image: data.store.logo_image
-        ? (data.store.logo_image.startsWith('http') ? data.store.logo_image : `http://localhost:8000${data.store.logo_image}`)
+        ? (data.store.logo_image.startsWith('http') ? data.store.logo_image : `${api.defaults.baseURL}${data.store.logo_image}`)
         : null
 } : null,
 

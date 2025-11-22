@@ -30,7 +30,7 @@ export const useOrganizerEvents = () => {
             }),
             location: item.location_name,
             imageUrl: item.poster_image 
-                ? (item.poster_image.startsWith('http') ? item.poster_image : `http://localhost:8000${item.poster_image}`)
+                ? (item.poster_image.startsWith('http') ? item.poster_image : `${api.defaults.baseURL}${item.poster_image}`)
                 : 'https://placehold.co/600x400/18181b/ffffff?text=No+Image',
             price: `KES ${item.lowest_price.toLocaleString()}`,
             category: 'Concert',
@@ -44,7 +44,7 @@ export const useOrganizerEvents = () => {
     name: item.store.name,
     slug: item.store.slug,
     logo_image: item.store.logo_image 
-        ? (item.store.logo_image.startsWith('http') ? item.store.logo_image : `http://localhost:8000${item.store.logo_image}`)
+        ? (item.store.logo_image.startsWith('http') ? item.store.logo_image : `${api.defaults.baseURL}${item.store.logo_image}`)
         : null
 } : null,
             

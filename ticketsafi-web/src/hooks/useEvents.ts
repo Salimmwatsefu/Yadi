@@ -68,7 +68,7 @@ export const useEvents = (
                         date: `${datePart} • ${timePart}`,
                         location: item.location_name,
                         imageUrl: item.poster_image 
-                            ? (item.poster_image.startsWith('http') ? item.poster_image : `http://localhost:8000${item.poster_image}`)
+                            ? (item.poster_image.startsWith('http') ? item.poster_image : `${api.defaults.baseURL}${item.poster_image}`)
                             : 'https://placehold.co/600x400/18181b/ffffff?text=No+Image',
                         price: `KES ${item.lowest_price.toLocaleString()}`,
                         category: item.category as any,

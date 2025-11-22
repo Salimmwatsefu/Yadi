@@ -28,7 +28,7 @@ export const useMyTickets = () => {
             // Ensure image URL is absolute
             event_image: t.event_image.startsWith('http') 
                 ? t.event_image 
-                : `http://127.0.0.1:8000${t.event_image}`
+                : `${api.defaults.baseURL}${t.event_image}`
         }));
 
         setTickets(mappedTickets);

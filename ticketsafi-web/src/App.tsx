@@ -22,6 +22,7 @@ import StorePage from './pages/StorePage';
 import EditStorePage from './pages/organizer/EditStorePage';
 
 
+
 // Auth Pages
 import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
@@ -32,6 +33,7 @@ import ScannerPage from './pages/scanner/ScannerPage';
 
 import ScannerRoute from './layouts/ScannerRoute';
 import TeamPage from './pages/organizer/TeamPage';
+import ScrollToTop from './components/ScrollToTop';
 
 
 const OrganizerRoute = ({ children }: { children: React.ReactNode }) => (
@@ -47,6 +49,7 @@ function App() {
     <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
       <AuthProvider>
         <Router>
+          <ScrollToTop />
           <Routes>
             {/* --- AUTH ROUTES --- */}
              {/* --- AUTH ROUTES --- */}

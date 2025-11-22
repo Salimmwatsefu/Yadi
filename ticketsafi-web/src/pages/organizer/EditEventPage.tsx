@@ -57,7 +57,7 @@ const EditEventPage = () => {
         if (data.poster_image) {
              const imgUrl = data.poster_image.startsWith('http') 
                 ? data.poster_image 
-                : `http://localhost:8000${data.poster_image}`;
+                : `${api.defaults.baseURL}${data.poster_image}`;
              setImagePreview(imgUrl);
         }
 

@@ -3,7 +3,8 @@ import axios from 'axios';
 // Create a dedicated instance of axios
 const api = axios.create({
     // Point to your Django backend
-    baseURL: 'http://localhost:8000', 
+    //baseURL: 'http://localhost:8000', 
+    baseURL: 'http://162.243.104.205/',
     
     // CRITICAL: This allows cookies to be sent/received
     withCredentials: true, 

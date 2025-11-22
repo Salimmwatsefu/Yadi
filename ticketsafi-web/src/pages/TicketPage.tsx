@@ -36,7 +36,7 @@ const TicketPage = () => {
             ...response.data,
             event_image: response.data.event_image.startsWith('http') 
                 ? response.data.event_image 
-                : `http://localhost:8000${response.data.event_image}`
+                : `${api.defaults.baseURL}${response.data.event_image}`
         });
       } catch (err) {
         console.error('Error fetching ticket:', err);
