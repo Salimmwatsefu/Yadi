@@ -1,6 +1,6 @@
 import json
 import uuid
-from django.db.models import Sum, Avg, Count
+from django.db.models import Sum, Avg, Count, F
 from django.shortcuts import get_object_or_404, redirect
 from django.utils import timezone
 from rest_framework import generics, views, status, permissions
@@ -153,7 +153,7 @@ class InitiatePaymentView(views.APIView):
             attendee_name=attendee_name, # Save name provided at checkout
             attendee_email=attendee_email
         )
-        tier.quantity_sold = models.F('quantity_sold') + 1
+        tier.quantity_sold = F('quantity_sold') + 1
         tier.save()
 
         # 5. Delivery (Background task in production)

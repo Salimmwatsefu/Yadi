@@ -1,3 +1,4 @@
+from django.conf import settings
 import qrcode
 from io import BytesIO
 from django.core.mail import EmailMessage
@@ -177,7 +178,7 @@ def send_ticket_email(ticket):
     """
     Sends email with the generated Ticket Image attached.
     """
-    subject = f"Your Ticket: {ticket.event.title}"
+    subject = f"Your Ticket: {ticket.event.title} | Yadi Tickets"
     
     try:
         ticket_image_data = generate_ticket_image(ticket)
@@ -194,13 +195,14 @@ def send_ticket_email(ticket):
     You can save this image to your phone and scan it at the gate.
     
     Enjoy the event!
-    YadiTickets Team
+    Yadi Tickets Team
+    https://yadi.app
     """
 
     email = EmailMessage(
         subject=subject,
         body=body,
-        from_email='YadiTickets <sjmwatsefu@gmail.com>',
+        from_email=settings.DEFAULT_FROM_EMAIL,
         to=[ticket.attendee_email or ticket.owner.email],
     )
     
