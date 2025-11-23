@@ -54,6 +54,16 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
+      
+      - name: Clean previous docker-compose
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.DROPLET_IP }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: rm -rf /opt/yadi/docker-compose.yml
+
+
       # Copy the docker-compose.yml file to the server
       - name: Copy Config
         uses: appleboy/scp-action@v0.1.7
@@ -64,6 +74,7 @@ jobs:
           source: "docker-compose.yml"
           target: "/opt/yadi/docker-compose.yml"
           strip_components: 0
+          overwrite: true
 
       # SSH in and run it
       - name: Deploy
