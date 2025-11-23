@@ -63,6 +63,7 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           source: "docker-compose.yml"
           target: "/opt/yadi/docker-compose.yml"
+          strip_components: 0z
 
       # SSH in and run it
       - name: Deploy
