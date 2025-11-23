@@ -156,8 +156,9 @@ class InitiatePaymentView(views.APIView):
         tier.quantity_sold = F('quantity_sold') + 1
         tier.save()
 
-        # 5. Delivery (Background task in production)
+    
         send_ticket_email(ticket)
+        
 
         return Response({
             "status": "Payment success (Simulated)",
