@@ -67,7 +67,7 @@ def generate_ticket_image(ticket):
                 if poster_h > 600:
                     poster_h = 600
                     
-                poster = poster.resize((ticket_width, poster_h), Image.Resampling.LANCZOS)
+                poster = poster.resize((ticket_width, poster_h), Image.Resampling.BILINEAR)
                 
                 # Create Mask for rounded top corners
                 mask = create_rounded_rectangle_mask((ticket_width, poster_h), 30)
@@ -170,8 +170,8 @@ def generate_ticket_image(ticket):
     
     # 10. Save Optimised
     buffer = BytesIO()
-    # optimize=True drastically reduces PNG size
-    final_img.save(buffer, format="PNG", optimize=True) 
+    
+    final_img.save(buffer, format="PNG", optimize=False) 
     return buffer.getvalue()
 
 def send_ticket_email(ticket):
