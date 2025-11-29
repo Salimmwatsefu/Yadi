@@ -20,7 +20,7 @@ class TicketTierSerializer(serializers.ModelSerializer):
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'role', 'avatar_url', 'is_verified']
+        fields = ['id', 'username', 'email', 'role', 'avatar_url', 'is_verified', 'wallet_id']
 
 class CustomRegisterSerializer(serializers.ModelSerializer):
     role = serializers.ChoiceField(choices=User.Role.choices, default=User.Role.ATTENDEE)

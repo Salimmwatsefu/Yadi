@@ -124,19 +124,22 @@ CORS_ALLOWED_ORIGINS = [
     "https://yadi.app",
     "https://www.yadi.app",
     "https://api.yadi.app",
+    "http://localhost:8001",
+    "https://tickets.yadi.app/"
 ]
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
     "http://localhost:8000",
+    "http://localhost:8001",
     "https://yadi.app",
     "https://www.yadi.app",
     "https://api.yadi.app",
+    "https://tickets.yadi.app/"
    
 ]
 
-# 1. Trust the "X-Forwarded-Proto" header coming from Nginx Proxy Manager
-# This tells Django: "Even though Nginx is talking to me via HTTP, the user is on HTTPS"
+
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 # 2. Trust the Host header provided by Nginx

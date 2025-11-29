@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { useOrganizerStats } from '../../hooks/useOrganizerStats';
 import { useAuth } from '../../context/AuthContext';
+import WalletActivationBanner from '../../components/WalletActivationBanner';
 
 // Reusable Stat Card Component
 const StatCard = ({ title, value, subtext, icon: Icon, trend }: any) => (
@@ -50,6 +51,7 @@ const DashboardPage = () => {
 
   return (
     <div className="space-y-8">
+      <WalletActivationBanner />
       {/* Welcome Section */}
       <div className="flex flex-col md:flex-row justify-between items-end">
         <div>

@@ -20,6 +20,7 @@ import MyStoresPage from './pages/organizer/MyStoresPage';
 import StoresListPage from './pages/StoresListPage';
 import StorePage from './pages/StorePage';
 import EditStorePage from './pages/organizer/EditStorePage';
+import PayoutsPage from './pages/organizer/PayoutsPage';
 
 
 
@@ -142,6 +143,12 @@ function App() {
         <Route path="/organizer/store/:id/edit" element={<OrganizerRoute><EditStorePage /></OrganizerRoute>} />
 
         <Route path="/organizer/team" element={<OrganizerRoute><TeamPage /></OrganizerRoute>} />
+
+        <Route path="/organizer/payouts" element={
+          <OrganizerRoute>
+            <PayoutsPage />
+          </OrganizerRoute>
+        } />
 
 
         <Route path="/scanner" element={

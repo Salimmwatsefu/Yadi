@@ -1,17 +1,21 @@
 from django.urls import include, path
-from .views import ( EventListView, EventDetailView, InitiatePaymentView, OrganizerEventUpdateView, UserTicketsView, TicketDetailView, OrganizerEventCreateView, OrganizerDashboardView, OrganizerEventListView, OrganizerEventAttendeesView, VerifyTicketView,
-                     ScannerListView, ScannerCreateView
+from .views import ( EventListView, EventDetailView, GetWalletLinkView, InitiatePaymentView, OrganizerEventUpdateView, OrganizerWalletProxyView, UserTicketsView, TicketDetailView, OrganizerEventCreateView, OrganizerDashboardView, OrganizerEventListView, OrganizerEventAttendeesView, VerifyTicketView,
+                     ScannerListView, ScannerCreateView, ActivateWalletView
                     
                     )
 
 
 
+
+
 urlpatterns = [
+ 
     path('events/', EventListView.as_view(), name='event-list'),
     path('events/<uuid:id>/', EventDetailView.as_view(), name='event-detail'),
 
     # Payment Route
     path('pay/initiate/', InitiatePaymentView.as_view(), name='pay-initiate'),
+
 
     path('tickets/', UserTicketsView.as_view(), name='user-tickets'),
     path('tickets/<uuid:id>/', TicketDetailView.as_view(), name='ticket-detail'),
@@ -33,5 +37,16 @@ path('organizer/events/<uuid:id>/attendees/', OrganizerEventAttendeesView.as_vie
 
    # --- STORES APP ROUTES ---
     path('stores/', include('stores.urls')),
+
+
+    # Activate wallet
+    path('organizer/wallet/activate/', ActivateWalletView.as_view(), name='activate-wallet'),
+
+    path('organizer/wallet/', OrganizerWalletProxyView.as_view(), name='organizer-wallet-proxy'),
+
+
+    path('organizer/wallet/link/', GetWalletLinkView.as_view(), name='wallet-link'),
+
+    
 
 ]

@@ -9,6 +9,7 @@ interface User {
   last_name?: string;
   role?: 'ORGANIZER' | 'ATTENDEE' | 'SCANNER' | 'ADMIN'; 
   is_staff?: boolean; 
+  wallet_id?: string | null;
 }
 
 interface AuthContextType {
@@ -61,9 +62,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // 4. Google Login Action
   // The logic here is perfect. It sends the role to your custom Adapter.
   const loginWithGoogle = async (token: string, role = 'ATTENDEE') => {
-    await api.post('/api/auth/google/', {
+    // CHANGE: Append ?role=${role} to the URL
+    await api.post(`/api/auth/google/?role=${role}`, {
         access_token: token,
-        role: role // <--- Backend reads this!
+        role: role 
     });
     await checkAuthStatus();
   };

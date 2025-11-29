@@ -3,6 +3,7 @@ from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 from events.views import GoogleLogin, password_reset_confirm_redirect
+from events.views_webhooks import PaymentWebhookView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -18,6 +19,8 @@ urlpatterns = [
     # App Routes
     path('api/', include('events.urls')),
     path('api/stores/', include('stores.urls')),
+
+    path('api/webhooks/payment/', PaymentWebhookView.as_view(), name='webhook-payment'),
 ]
 
 # Serve media files (Event Posters) in development

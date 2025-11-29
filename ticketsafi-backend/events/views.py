@@ -14,6 +14,7 @@ from .serializers import EventListSerializer, EventDetailSerializer, EventCreate
 from .utils import send_ticket_email
 from events import models 
 from rest_framework.views import APIView
+from .services.wallet_client import WalletClient
 
 # --- AUTH RELATED VIEWS ---
 
@@ -81,12 +82,12 @@ class EventDetailView(generics.RetrieveAPIView):
 
 # --- PURCHASE & PAYMENT VIEWS ---
 
+# ticketsafi-backend/events/views.py
+
+from .services.wallet_client import WalletClient # Ensure this import exists
+
 class InitiatePaymentView(views.APIView):
-    """
-    Handles payment initiation (STK Push simulation) and shadow account creation.
-    Uses POST /api/pay/initiate/
-    """
-    permission_classes = [permissions.AllowAny] # Allow guests to purchase
+    permission_classes = [permissions.AllowAny]
 
     def post(self, request):
         data = request.data
@@ -101,70 +102,67 @@ class InitiatePaymentView(views.APIView):
 
         tier = get_object_or_404(TicketTier, id=tier_id)
         
-        # 1. Inventory Check
         if tier.available_qty() <= 0:
             return Response({"error": "This ticket tier is sold out."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # 2. Find or Create Owner
+        # --- 1. Identify Owner ---
         if request.user.is_authenticated:
             owner = request.user
-            attendee_email = owner.email
-            attendee_name = owner.get_full_name() or owner.username
         else:
             if not guest_email or not guest_name:
-                return Response({"error": "Guest checkout requires name and email."}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({"error": "Guest details required."}, status=status.HTTP_400_BAD_REQUEST)
             
-            try:
-                # Find existing user by email (shadow user claim)
-                owner = User.objects.get(email=guest_email)
-            except User.DoesNotExist:
-                # Create a shadow user account (unusable until password reset/set)
-                owner = User.objects.create_user(
-                    username=f"{guest_name.split(' ')[0].lower()}_{uuid.uuid4().hex[:4]}",
-                    email=guest_email,
-                    # Password is unusable hash
-                    password=User.objects.make_random_password(length=30)
-                )
-                owner.first_name = guest_name # Save the name for the ticket
-                owner.save()
-            
-            attendee_email = guest_email
-            attendee_name = guest_name # Use the name provided during checkout
+            owner, created = User.objects.get_or_create(
+                email=guest_email,
+                defaults={
+                    'username': f"{guest_name.split(' ')[0].lower()}_{uuid.uuid4().hex[:4]}",
+                    'first_name': guest_name,
+                    'password': User.objects.make_random_password()
+                }
+            )
 
-        # 3. STK Push Simulation (Real integration needed here)
-        transaction_ref = f"TS-{uuid.uuid4().hex[:10]}"
-        
-        # Create Payment Record
-        Payment.objects.create(
+        # --- 2. Generate Reference ---
+        ticket_ref = f"TS-{uuid.uuid4().hex[:12].upper()}"
+
+        # --- 3. CREATE PAYMENT RECORD FIRST (Pending) ---
+        # We do this BEFORE calling the wallet so the Webhook finds it.
+        payment = Payment.objects.create(
             user=owner,
             event=tier.event,
             tier=tier,
             amount=tier.price,
             phone_number=phone_number,
-            reference_code=transaction_ref,
-            status=Payment.Status.COMPLETED # SIMULATION
+            reference_code=ticket_ref,
+            status=Payment.Status.PENDING
         )
-        
-        # 4. Create Ticket & Update Inventory
-        ticket = Ticket.objects.create(
-            event=tier.event,
-            tier=tier,
-            owner=owner,
-            attendee_name=attendee_name, # Save name provided at checkout
-            attendee_email=attendee_email
-        )
-        tier.quantity_sold = F('quantity_sold') + 1
-        tier.save()
+
+        # --- 4. Call Wallet Service ---
+        try:
+            client = WalletClient()
+            organizer_id = tier.event.organizer.id
+            
+            wallet_response = client.collect_payment(
+                organizer_id=organizer_id,
+                phone=phone_number,
+                amount=tier.price,
+                ticket_ref=ticket_ref
+            )
+
+            return Response({
+                "status": "Payment Initiated",
+                "transaction_ref": ticket_ref,
+                "mpesa_ref": wallet_response.get('mpesa_ref')
+            }, status=status.HTTP_202_ACCEPTED)
+
+        except Exception as e:
+            # If the wallet call fails, mark payment as failed
+            payment.status = Payment.Status.FAILED
+            payment.save()
+            print(f"Wallet Payment Error: {e}")
+            return Response({"error": "Payment service unavailable."}, status=503)
+
 
     
-        send_ticket_email(ticket)
-        
-
-        return Response({
-            "status": "Payment success (Simulated)",
-            "transaction_ref": transaction_ref,
-            "ticket_id": ticket.id
-        }, status=status.HTTP_201_CREATED)
 
 
 class UserTicketsView(generics.ListAPIView):
@@ -397,3 +395,110 @@ class ScannerCreateView(views.APIView):
             "email": user.email,
             "role": "SCANNER"
         }, status=status.HTTP_201_CREATED)
+    
+
+
+
+
+class ActivateWalletView(APIView):
+    """
+    Organizer clicks 'Activate Wallet'.
+    We call the Wallet Service, get an ID, and save it.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        user = request.user
+        
+        if user.role != User.Role.ORGANIZER:
+            return Response({"error": "Only organizers can have wallets."}, status=403)
+
+        if user.wallet_id:
+            return Response({"message": "Wallet already active", "wallet_id": user.wallet_id}, status=200)
+
+        # 1. Call the Microservice
+        client = WalletClient()
+        try:
+            data = client.onboard_user(user)
+            
+            # 2. Save the result
+            wallet_id = data.get('wallet_id')
+            user.wallet_id = wallet_id
+            user.save()
+            
+            return Response({
+                "status": "activated",
+                "wallet_id": wallet_id
+            }, status=201)
+
+        except Exception as e:
+            return Response({"error": str(e)}, status=503)
+        
+
+
+
+class OrganizerWalletProxyView(APIView):
+    """
+    Proxies wallet requests (Balance & Withdraw) from the Frontend 
+    to the Wallet Microservice.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        # 1. Get Balance
+        if request.user.role != User.Role.ORGANIZER:
+            return Response({"error": "Unauthorized"}, status=403)
+            
+        client = WalletClient()
+        data = client.get_balance(request.user.id)
+        return Response(data)
+
+    def post(self, request):
+        # 2. Withdraw Funds
+        amount = request.data.get('amount')
+        if not amount:
+            return Response({"error": "Amount required"}, status=400)
+
+        client = WalletClient()
+        try:
+            result = client.initiate_withdrawal(request.user.id, amount)
+            return Response(result)
+        except Exception as e:
+            return Response({"error": str(e)}, status=400)
+        
+
+    def get(self, request):
+        if request.user.role != User.Role.ORGANIZER:
+            return Response({"error": "Unauthorized"}, status=403)
+            
+        client = WalletClient()
+        action = request.query_params.get('action')
+        
+        if action == 'history':
+            # Pass all query params (page, page_size) to the client
+            # We exclude 'action' itself from the forwarded params
+            params = request.query_params.copy()
+            if 'action' in params: del params['action']
+            
+            data = client.get_history(request.user.id, params)
+        else:
+            data = client.get_balance(request.user.id)
+            
+        return Response(data)
+        
+
+
+
+class GetWalletLinkView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        if request.user.role != User.Role.ORGANIZER:
+            return Response({"error": "Unauthorized"}, status=403)
+            
+        client = WalletClient()
+        try:
+            data = client.get_kyc_link(request.user.id)
+            return Response(data) # Returns { "magic_link": "..." }
+        except Exception as e:
+            return Response({"error": str(e)}, status=500)

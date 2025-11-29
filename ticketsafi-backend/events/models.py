@@ -17,6 +17,7 @@ class User(AbstractUser):
     
     avatar_url = models.URLField(blank=True, null=True)
     is_verified = models.BooleanField(default=False)
+    wallet_id = models.UUIDField(null=True, blank=True, unique=True, help_text="Linked Yadi Wallet ID")
 
     def __str__(self):
         return f"{self.username} ({self.role})"
