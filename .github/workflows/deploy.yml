@@ -88,6 +88,7 @@ jobs:
             docker compose up -d --remove-orphans
             
             # Migrate DB
+            docker compose exec -u root -T backend chown -R appuser:appuser /app/staticfiles /app/media || true
             docker compose exec -T backend python manage.py migrate
             docker compose exec -T backend python manage.py collectstatic --noinput
             
