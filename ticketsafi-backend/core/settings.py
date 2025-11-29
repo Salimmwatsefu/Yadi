@@ -125,7 +125,7 @@ CORS_ALLOWED_ORIGINS = [
     "https://www.yadi.app",
     "https://api.yadi.app",
     "http://localhost:8001",
-    "https://tickets.yadi.app/"
+    "https://tickets.yadi.app"
 ]
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:5173",
@@ -135,7 +135,7 @@ CSRF_TRUSTED_ORIGINS = [
     "https://yadi.app",
     "https://www.yadi.app",
     "https://api.yadi.app",
-    "https://tickets.yadi.app/"
+    "https://tickets.yadi.app"
    
 ]
 
