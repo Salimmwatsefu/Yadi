@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Calendar, MapPin, Upload, Plus, Trash2, DollarSign, Ticket, CheckCircle, Loader2, X, Save, ArrowLeft, Store, Lock } from 'lucide-react';
+import { Calendar, MapPin, Upload, Plus, Trash2, DollarSign, Ticket, CheckCircle, Loader2, X, Save, ArrowLeft, Store, Lock, Layers } from 'lucide-react';
 import api from '../../api/axios';
 
 interface TierFormData {
@@ -17,6 +17,16 @@ interface StoreOption {
     name: string;
 }
 
+const CATEGORIES = [
+    { value: 'CONCERT', label: 'Concert' },
+    { value: 'FESTIVAL', label: 'Festival' },
+    { value: 'NIGHTLIFE', label: 'Nightlife' },
+    { value: 'THEATRE', label: 'Theatre' },
+    { value: 'SPORTS', label: 'Sports' },
+    { value: 'ARTS', label: 'Arts & Culture' },
+    { value: 'OTHER', label: 'Other' },
+];
+
 const EditEventPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -30,6 +40,7 @@ const EditEventPage = () => {
   const [location, setLocation] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [category, setCategory] = useState('');
   
   const [myStores, setMyStores] = useState<StoreOption[]>([]);
   const [selectedStore, setSelectedStore] = useState('');
@@ -47,6 +58,7 @@ const EditEventPage = () => {
 
         setTitle(data.title);
         setDescription(data.description);
+        setCategory(data.category || 'OTHER');
         setLocation(data.location_name);
         
         if (data.start_datetime) setStartDate(data.start_datetime.slice(0, 16));
@@ -129,6 +141,7 @@ const EditEventPage = () => {
       const formData = new FormData();
       formData.append('title', title);
       formData.append('description', description);
+      formData.append('category', category);
       formData.append('location_name', location);
       formData.append('start_datetime', new Date(startDate).toISOString());
       formData.append('end_datetime', new Date(endDate).toISOString());
@@ -186,6 +199,27 @@ const EditEventPage = () => {
             <div>
               <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">Description</label>
               <textarea rows={4} className="w-full bg-black/20 border border-white/10 rounded-xl p-4 text-white focus:border-primary outline-none" value={description} onChange={e => setDescription(e.target.value)} />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">Category</label>
+              <div className="relative">
+                <Layers className="absolute left-4 top-4 w-5 h-5 text-zinc-500" />
+                <select 
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value)}
+                    className="w-full bg-black/20 border border-white/10 rounded-xl p-4 pl-12 text-white focus:border-primary outline-none appearance-none"
+                >
+                    {CATEGORIES.map(cat => (
+                        <option key={cat.value} value={cat.value} className="bg-zinc-900 text-white">
+                            {cat.label}
+                        </option>
+                    ))}
+                </select>
+                <div className="absolute right-4 top-4 pointer-events-none text-zinc-500">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                </div>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

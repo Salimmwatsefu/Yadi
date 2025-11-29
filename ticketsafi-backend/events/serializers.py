@@ -1,8 +1,15 @@
+from django.core.mail import EmailMessage
 import json
+from django.conf import settings
 from rest_framework import serializers
 from django.db.models import Min
 from .models import User, Event, TicketTier, Ticket, Payment
 from stores.models import Store
+from allauth.account.forms import ResetPasswordForm
+from django.contrib.auth.tokens import default_token_generator
+from django.utils.http import urlsafe_base64_encode
+from django.utils.encoding import force_bytes
+from django.template.loader import render_to_string
 
 # --- NEW: Simple Serializer for Store Info in Events ---
 class SimpleStoreSerializer(serializers.ModelSerializer):
@@ -26,10 +33,20 @@ class CustomRegisterSerializer(serializers.ModelSerializer):
     role = serializers.ChoiceField(choices=User.Role.choices, default=User.Role.ATTENDEE)
     password2 = serializers.CharField(style={'input_type': 'password'}, write_only=True)
 
+    email = serializers.EmailField(required=True)
+
     class Meta:
         model = User
         fields = ['username', 'email', 'password', 'password2', 'role']
         extra_kwargs = {'password': {'write_only': True}}
+
+    def validate_email(self, email):
+        user = User.objects.filter(email=email).first()
+        if user:
+            if getattr(user, 'is_guest', False):
+                return email
+            raise serializers.ValidationError("A user with that email already exists.")
+        return email
         
     def validate(self, data):
         if data['password'] != data['password2']:
@@ -37,14 +54,65 @@ class CustomRegisterSerializer(serializers.ModelSerializer):
         return data
 
     def save(self, request):
-        user = User.objects.create_user(
-            username=self.validated_data['username'],
-            email=self.validated_data['email'],
-            password=self.validated_data['password']
-        )
-        user.role = self.validated_data.get('role', User.Role.ATTENDEE)
-        user.save()
-        return user
+        email = self.validated_data['email']
+        username = self.validated_data['username']
+        password = self.validated_data['password']
+        
+        user = User.objects.filter(email=email).first()
+        is_new_user = False
+
+        if user:
+            # GUEST FLOW: Overwrite & Claim
+            if not getattr(user, 'is_guest', False):
+                 # Should have been caught by validate_email, but safety first
+                 raise serializers.ValidationError("User exists.")
+                 
+            user.username = username
+            user.set_password(password)
+            user.is_active = False # Lock until verified
+            user.is_guest = False  # They are claiming it now
+            user.save()
+        else:
+            # NEW USER FLOW: Create Inactive
+            user = User.objects.create_user(
+                username=username,
+                email=email,
+                password=password,
+                is_active=False, # <--- KEY CHANGE: Lock immediately
+                is_guest=False
+            )
+            is_new_user = True
+
+        # --- SHARED ACTIVATION LOGIC ---
+        token = default_token_generator.make_token(user)
+        uid = urlsafe_base64_encode(force_bytes(user.pk))
+        
+        if settings.DEBUG:
+            domain = "http://localhost:5173"
+        else:
+            domain = "https://tickets.yadi.app"
+        
+        activate_url = f"{domain}/activate/{uid}/{token}"
+
+        self.send_activation_email(user, activate_url, is_new_user)
+
+        # Signal Frontend
+        code = "ACCOUNT_CREATED_NEEDS_ACTIVATION" if is_new_user else "ACCOUNT_EXISTS_NEEDS_ACTIVATION"
+        raise serializers.ValidationError({"non_field_errors": [code]})
+
+    def send_activation_email(self, user, url, is_new_user):
+        if is_new_user:
+            subject = "Activate your TicketSafi Account"
+            body = f"Welcome to TicketSafi!\n\nClick here to verify your email:\n{url}"
+        else:
+            subject = "Verify your TicketSafi Account"
+            body = f"We found your guest tickets!\n\nClick here to verify this is you and claim your account:\n{url}"
+
+        email = EmailMessage(subject, body, to=[user.email])
+        email.send()
+
+
+        
 
 class EventListSerializer(serializers.ModelSerializer):
     organizer_name = serializers.ReadOnlyField(source='organizer.username')

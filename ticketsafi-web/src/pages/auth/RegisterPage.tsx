@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate, Link, useParams } from 'react-router-dom';
-import { Ticket, Mail, Lock, User, Loader2, Briefcase } from 'lucide-react';
+import { Ticket, Mail, Lock, User, Loader2, Briefcase, CheckCircle } from 'lucide-react';
 import { useGoogleLogin } from '@react-oauth/google';
 import { useAuth } from '../../context/AuthContext';
-import api from '../../api/axios'; // Needed for role check
+import api from '../../api/axios';
 import { GoogleIcon } from '../../components/ui/icons/GoogleIcon';
 
 const RegisterPage = () => {
@@ -37,7 +37,6 @@ const RegisterPage = () => {
       role: "ATTENDEE"
   };
 
-  // --- SHARED REDIRECT LOGIC (Same as Login) ---
   const handleRoleBasedRedirect = async () => {
     try {
         const userRes = await api.get('/api/auth/user/');
@@ -51,20 +50,16 @@ const RegisterPage = () => {
              navigate('/', { replace: true }); 
         }
     } catch (err) {
-        console.error("Failed to fetch role after registration", err);
+        console.error("Failed to fetch role", err);
         navigate(config.redirectPath);
     }
   };
 
-  // --- GOOGLE REGISTRATION ---
   const handleGoogleLogin = useGoogleLogin({
     onSuccess: async (tokenResponse) => {
         setLoading(true);
         try {
-            // 1. Pass the role from config so backend Adapter sees it
             await loginWithGoogle(tokenResponse.access_token, config.role);
-            
-            // 2. Redirect based on the role we just assigned
             await handleRoleBasedRedirect();
         } catch (err) {
             setError('Google Sign-Up failed. Please try again.');
@@ -76,45 +71,75 @@ const RegisterPage = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     if (formData.password !== formData.confirmPassword) {
         setError("Passwords don't match");
         return;
     }
-
     setLoading(true);
     setError('');
 
     try {
-        // Standard Email Registration
         await register({
             username: formData.username,
             email: formData.email,
             password: formData.password,
             password1: formData.password,
             password2: formData.confirmPassword,
-            role: config.role // This works fine because your serializer handles it
+            role: config.role
         });
-        
-        // Use smart redirect here too
         await handleRoleBasedRedirect();
 
     } catch (err: any) {
         console.error(err);
-        if (err.response?.data?.email) {
+        const errorData = err.response?.data;
+
+        const errorCode = err.response?.data?.non_field_errors?.[0];
+
+// CASE 1: Guest Account Found
+if (errorCode === "ACCOUNT_EXISTS_NEEDS_ACTIVATION") {
+     setError(
+       <div className="bg-emerald-500/10 border border-emerald-500/20 p-4 rounded-xl text-center animate-fade-in">
+         <h3 className="text-emerald-400 font-bold mb-1 flex items-center justify-center gap-2">
+            <CheckCircle className="w-4 h-4" /> Guest Account Found!
+         </h3>
+         <p className="text-sm text-zinc-300">
+            We sent an activation link to <strong>{formData.email}</strong> to verify ownership.
+         </p>
+       </div>
+     );
+     setLoading(false);
+     return;
+}
+
+// CASE 2: New Account Created (Standard)
+if (errorCode === "ACCOUNT_CREATED_NEEDS_ACTIVATION") {
+     setError(
+       <div className="bg-blue-500/10 border border-blue-500/20 p-4 rounded-xl text-center animate-fade-in">
+         <h3 className="text-blue-400 font-bold mb-1 flex items-center justify-center gap-2">
+            <CheckCircle className="w-4 h-4" /> Account Created!
+         </h3>
+         <p className="text-sm text-zinc-300">
+            Please check <strong>{formData.email}</strong> for a verification link to complete setup.
+         </p>
+       </div>
+     );
+     setLoading(false);
+     return;
+}
+
+        if (errorData?.email) {
              setError(
                <span>
                  An account with this email already exists. <br/>
-                 Bought a ticket as a guest?{' '}
-                 <Link to="/forgot-password" className="underline font-bold hover:text-white">
-                   Reset Password here.
+                 <Link to="/login" className="underline font-bold hover:text-white">
+                   Log in here.
                  </Link>
                </span>
              );
-        } else if (err.response?.data?.username) {
+        } else if (errorData?.username) {
              setError('That username is already taken. Please choose another.');
-        } else if (err.response?.data?.password1) {
-             setError('Password error: ' + err.response.data.password1[0]);
+        } else if (errorData?.password1) {
+             setError('Password error: ' + errorData.password1[0]);
         } else {
              setError('Registration failed. Please check your details.');
         }
@@ -124,7 +149,6 @@ const RegisterPage = () => {
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4 relative overflow-hidden">
-       {/* Backgrounds */}
        <div className={`absolute top-[-10%] left-[-10%] w-[50%] h-[50%] blur-[120px] rounded-full opacity-40 ${isOrganizer ? 'bg-secondary/20' : 'bg-primary/20'}`} />
        <div className={`absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] blur-[120px] rounded-full opacity-40 ${isOrganizer ? 'bg-blue-500/20' : 'bg-secondary/20'}`} />
 
@@ -144,8 +168,24 @@ const RegisterPage = () => {
                </div>
            )}
 
+           {/* --- 1. GOOGLE FIRST --- */}
+           <button 
+             onClick={() => handleGoogleLogin()}
+             className="w-full py-3.5 rounded-xl bg-white text-zinc-900 font-bold hover:bg-zinc-200 transition-colors flex items-center justify-center gap-3 mb-6"
+           >
+            <GoogleIcon className="w-5 h-5" />
+             <span>Continue with Google</span>
+           </button>
+
+           {/* --- DIVIDER --- */}
+           <div className="flex items-center mb-6">
+              <div className="flex-1 border-t border-white/10"></div>
+              <span className="px-3 text-xs text-zinc-500 uppercase font-bold">Or sign up with email</span>
+              <div className="flex-1 border-t border-white/10"></div>
+           </div>
+
+           {/* --- 2. FORM SECOND --- */}
            <form onSubmit={handleSubmit} className="space-y-4">
-               {/* ... Inputs same as before ... */}
                <div>
                    <div className="relative">
                        <User className="absolute left-4 top-3.5 w-5 h-5 text-zinc-500" />
@@ -210,20 +250,6 @@ const RegisterPage = () => {
                    {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Create Account'}
                </button>
            </form>
-
-           <div className="my-6 flex items-center">
-              <div className="flex-1 border-t border-white/10"></div>
-              <span className="px-3 text-xs text-zinc-500 uppercase font-bold">Or</span>
-              <div className="flex-1 border-t border-white/10"></div>
-           </div>
-
-           <button 
-             onClick={() => handleGoogleLogin()}
-             className="w-full py-3.5 rounded-xl bg-white text-zinc-900 font-bold hover:bg-zinc-200 transition-colors flex items-center justify-center gap-3"
-           >
-            <GoogleIcon className="w-5 h-5" />
-             <span>Continue with Google</span>
-           </button>
 
            <div className="mt-8 text-center">
                <p className="text-zinc-400 text-sm">

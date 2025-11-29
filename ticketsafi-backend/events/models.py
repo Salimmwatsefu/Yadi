@@ -18,6 +18,7 @@ class User(AbstractUser):
     avatar_url = models.URLField(blank=True, null=True)
     is_verified = models.BooleanField(default=False)
     wallet_id = models.UUIDField(null=True, blank=True, unique=True, help_text="Linked Yadi Wallet ID")
+    is_guest = models.BooleanField(default=False, help_text="Flag for auto-generated guest accounts")
 
     def __str__(self):
         return f"{self.username} ({self.role})"
@@ -133,7 +134,7 @@ class Payment(models.Model):
         FAILED = 'FAILED', 'Failed'
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='payments')
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='payments')
     event = models.ForeignKey(Event, on_delete=models.CASCADE)
     tier = models.ForeignKey(TicketTier, on_delete=models.CASCADE)
     

@@ -31,6 +31,7 @@ const UserMenu = () => {
   if (!user) return null;
 
   const isOrganizer = user.role === 'ORGANIZER';
+  const isScanner = user.role === 'SCANNER'
 
   return (
     <div className="relative" ref={menuRef}>
@@ -60,11 +61,11 @@ const UserMenu = () => {
 
           {/* Menu Items */}
           <div className="px-2 space-y-1">
-           {/* Only show Wallet if NOT organizer */}
-            {!isOrganizer && (
+           {/* Only show Wallet if NOT Scanner */}
+            {!isScanner && (
                 <button 
                   onClick={() => { navigate('/my-tickets'); setIsOpen(false); }}
-                  className="..."
+                  className="w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-sm text-zinc-400 hover:text-white hover:bg-white/5 transition-colors"
                 >
                   <Ticket className="w-4 h-4 text-primary" />
                   <span>My Wallet</span>
@@ -75,7 +76,7 @@ const UserMenu = () => {
             {(isOrganizer || user.is_staff) && (
                 <button 
                   onClick={() => { navigate('/organizer'); setIsOpen(false); }}
-                  className="..."
+                  className="w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-sm text-zinc-400 hover:text-white hover:bg-white/5 transition-colors"
                 >
                   <LayoutDashboard className="w-4 h-4 text-secondary" />
                   <span>Organizer Portal</span>

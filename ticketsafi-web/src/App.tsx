@@ -24,6 +24,8 @@ import PayoutsPage from './pages/organizer/PayoutsPage';
 
 
 
+
+
 // Auth Pages
 import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
@@ -31,6 +33,9 @@ import AuthSelectionPage from './pages/auth/AuthSelectionPage';
 import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
 import PasswordResetConfirmPage from './pages/auth/PasswordResetConfirmPage';
 import ScannerPage from './pages/scanner/ScannerPage';
+import AccountActivationPage from './pages/auth/AccountActivationPage';
+// ...
+
 
 import ScannerRoute from './layouts/ScannerRoute';
 import TeamPage from './pages/organizer/TeamPage';
@@ -60,6 +65,7 @@ function App() {
           {/* Parametrized Routes */}
           <Route path="/login/:type" element={<LoginPage />} />
           <Route path="/register/:type" element={<RegisterPage />} />
+          <Route path="/activate/:uid/:token" element={<AccountActivationPage />} />
 
           
 

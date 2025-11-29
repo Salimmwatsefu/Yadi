@@ -26,6 +26,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.sites',
 
     # Third Party Apps
     'rest_framework',
@@ -61,7 +62,7 @@ ROOT_URLCONF = 'core.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -176,7 +177,9 @@ REST_AUTH = {
     
     'JWT_AUTH_SECURE': True,     
     'JWT_AUTH_HTTPONLY': True,    
-    'JWT_AUTH_SAMESITE': 'Lax',   
+    'JWT_AUTH_SAMESITE': 'Lax', 
+    'PASSWORD_RESET_URL': 'password-reset/confirm',
+    'PASSWORD_RESET_USE_SITES_DOMAIN': True, 
 }
 
 SIMPLE_JWT = {
@@ -197,12 +200,19 @@ SESSION_COOKIE_SAMESITE = 'Lax'
 CSRF_COOKIE_SAMESITE = 'Lax'
 
 # --- EMAIL SETTINGS (Brevo) ---
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp-relay.brevo.com'
-EMAIL_PORT = 2525
-EMAIL_USE_TLS = True
-EMAIL_HOST_USER = config('EMAIL_HOST_USER')
-EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD')
+# --- EMAIL SETTINGS ---
+if DEBUG:
+    # Development: Print to Console
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+else:
+    # Production: Send via Brevo
+    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+    EMAIL_HOST = 'smtp-relay.brevo.com'
+    EMAIL_PORT = 2525
+    EMAIL_USE_TLS = True
+    EMAIL_HOST_USER = config('EMAIL_HOST_USER')
+    EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD')
+
 DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='Yadi Tickets <tickets@yadi.app>')
 
 

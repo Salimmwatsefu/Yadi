@@ -47,7 +47,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
   };
 
   return (
-    <div className="w-full max-w-5xl mx-auto mt-10 md:mt-40 relative z-40 px-4" ref={containerRef}>
+    <div className="w-full max-w-5xl mx-auto mt-5 md:mt-40 relative z-40 px-4" ref={containerRef}>
       
       {/* --- THE ULTRA MODERN ISLAND --- */}
       {/* Mobile: rounded-3xl (Card look), Desktop: rounded-full (Pill look) */}

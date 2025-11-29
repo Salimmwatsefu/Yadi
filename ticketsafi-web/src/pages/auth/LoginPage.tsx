@@ -6,7 +6,6 @@ import { useAuth } from '../../context/AuthContext';
 import api from '../../api/axios';
 import { GoogleIcon } from '../../components/ui/icons/GoogleIcon';
 
-
 const LoginPage = () => {
   const navigate = useNavigate();
   const { type } = useParams<{ type: 'attendee' | 'organizer' }>();
@@ -36,10 +35,8 @@ const LoginPage = () => {
       redirectPath: "/"
   };
 
-  // --- DEFINE THIS FUNCTION HERE ---
   const handleRoleBasedRedirect = async () => {
     try {
-        // Fetch the FRESH user details from the backend
         const userRes = await api.get('/api/auth/user/');
         const role = userRes.data.role;
 
@@ -52,23 +49,16 @@ const LoginPage = () => {
         }
     } catch (err) {
         console.error("Failed to fetch role after login", err);
-        // Fallback to default path if role fetch fails
         navigate(config.redirectPath);
     }
   };
 
-  // --- Google Handler ---
   const handleGoogleLogin = useGoogleLogin({
     onSuccess: async (tokenResponse) => {
         setLoading(true);
         try {
-            // 1. Determine role based on the current URL (organizer or attendee)
             const roleToAssign = isOrganizer ? 'ORGANIZER' : 'ATTENDEE';
-            
-            // 2. Login with that role preference
             await loginWithGoogle(tokenResponse.access_token, roleToAssign);
-            
-            // 3. Redirect to the correct dashboard
             await handleRoleBasedRedirect();
         } catch (err) {
             setError('Google Sign-In failed. Please try again.');
@@ -81,7 +71,6 @@ const LoginPage = () => {
     }
   });
 
-  // --- Standard Login Handler ---
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -98,8 +87,6 @@ const LoginPage = () => {
         }
 
         await login(loginPayload);
-        
-        // Use the same redirect logic here!
         await handleRoleBasedRedirect();
 
     } catch (err: any) {
@@ -123,7 +110,6 @@ const LoginPage = () => {
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4 relative overflow-hidden">
-       {/* ... Background blobs ... */}
        <div className={`absolute top-[-10%] left-[-10%] w-[50%] h-[50%] blur-[120px] rounded-full opacity-40 ${isOrganizer ? 'bg-secondary/20' : 'bg-primary/20'}`} />
        <div className={`absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] blur-[120px] rounded-full opacity-40 ${isOrganizer ? 'bg-blue-500/20' : 'bg-secondary/20'}`} />
 
@@ -143,8 +129,24 @@ const LoginPage = () => {
                </div>
            )}
 
+           {/* --- 1. GOOGLE FIRST --- */}
+           <button 
+             onClick={() => handleGoogleLogin()}
+             className="w-full py-3.5 rounded-xl bg-white text-zinc-900 font-bold hover:bg-zinc-200 transition-colors flex items-center justify-center gap-3 mb-6"
+           >
+            <GoogleIcon className="w-5 h-5" />
+             <span>Continue with Google</span>
+           </button>
+
+           {/* --- DIVIDER --- */}
+           <div className="flex items-center mb-6">
+              <div className="flex-1 border-t border-white/10"></div>
+              <span className="px-3 text-xs text-zinc-500 uppercase font-bold">Or sign in with email</span>
+              <div className="flex-1 border-t border-white/10"></div>
+           </div>
+
+           {/* --- 2. FORM SECOND --- */}
            <form onSubmit={handleSubmit} className="space-y-5">
-               {/* ... Input fields remain the same ... */}
                <div>
                    <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">Email or Username</label>
                    <div className="relative">
@@ -175,6 +177,15 @@ const LoginPage = () => {
                    </div>
                </div>
 
+               <div className="flex justify-end">
+                   <Link 
+                       to="/forgot-password" 
+                       className="text-xs font-bold text-zinc-400 hover:text-white transition-colors"
+                   >
+                       Forgot Password?
+                   </Link>
+               </div>
+
                <button 
                    type="submit" 
                    disabled={loading}
@@ -183,20 +194,6 @@ const LoginPage = () => {
                    {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Sign In'}
                </button>
            </form>
-           
-           <div className="my-6 flex items-center">
-              <div className="flex-1 border-t border-white/10"></div>
-              <span className="px-3 text-xs text-zinc-500 uppercase font-bold">Or</span>
-              <div className="flex-1 border-t border-white/10"></div>
-           </div>
-
-           <button 
-             onClick={() => handleGoogleLogin()}
-             className="w-full py-3.5 rounded-xl bg-white text-zinc-900 font-bold hover:bg-zinc-200 transition-colors flex items-center justify-center gap-3"
-           >
-            <GoogleIcon className="w-5 h-5" />
-             <span>Continue with Google</span>
-           </button>
 
            <div className="mt-8 text-center">
                <p className="text-zinc-400 text-sm">

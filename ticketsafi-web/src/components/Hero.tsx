@@ -153,12 +153,12 @@ const Hero = () => {
                                     </div>
 
                                     {/* --- MOBILE NAVIGATION CONTROLS (Inside Image) --- */}
-                                    <div className="absolute bottom-6 right-6 z-30 flex gap-2 md:hidden">
+                                    <div className="absolute top-2 right-6 z-30 flex gap-2 md:hidden">
                                         <button onClick={prevSlide} className="p-3 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white active:scale-95 transition-transform">
-                                            <ChevronLeft className="w-5 h-5" />
+                                            <ChevronLeft className="w-3 h-3" />
                                         </button>
                                         <button onClick={nextSlide} className="p-3 rounded-full bg-white text-black border border-white active:scale-95 transition-transform">
-                                            <ChevronRight className="w-5 h-5" />
+                                            <ChevronRight className="w-3 h-3" />
                                         </button>
                                     </div>
                                 </motion.div>
@@ -170,7 +170,7 @@ const Hero = () => {
     <motion.div 
         variants={blockVariants}
         // Removed 'md:block' dependencies. Grid handles the width now.
-        className="relative rounded-[2rem] p-4 md:p-8 flex flex-col justify-between group overflow-hidden shadow-2xl border border-white/10 h-[200px] md:h-[230px] w-full min-w-0"
+        className="relative rounded-[2rem] p-4 md:p-8 flex flex-col justify-between group overflow-hidden shadow-2xl border border-white/10 h-[170px] md:h-[230px] w-full min-w-0"
     >
         {/* ... GLOWY BACKGROUNDS ... */}
         <div className="absolute inset-0 bg-gradient-to-br from-indigo-900/80 via-purple-900/60 to-zinc-900/90" />
@@ -208,7 +208,7 @@ const Hero = () => {
     {/* 3. ACTION BLOCK */}
     <motion.div 
         variants={blockVariants}
-        className="bg-white text-black rounded-[2rem] p-4 md:p-8 flex flex-col justify-between items-center md:items-stretch relative overflow-hidden group cursor-pointer hover:bg-zinc-200 transition-colors h-[200px] md:h-[230px] w-full min-w-0"
+        className="bg-white text-black rounded-[2rem] p-4 md:p-8 flex flex-col justify-between items-center md:items-stretch relative overflow-hidden group cursor-pointer hover:bg-zinc-200 transition-colors h-[170px] md:h-[230px] w-full min-w-0"
         onClick={() => navigate(`/event/${activeEvent.id}`)}
     >
         <div className="relative z-10 flex flex-col items-center md:items-start">

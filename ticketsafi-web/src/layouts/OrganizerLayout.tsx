@@ -71,9 +71,16 @@ const OrganizerLayout: React.FC<OrganizerLayoutProps> = ({ children }) => {
             <div className="w-8 h-8 bg-neon-gradient rounded-lg flex items-center justify-center shadow-neon">
               <Ticket className="text-white w-4 h-4" />
             </div>
-            <span className="text-xl font-heading font-bold tracking-tight text-white">TicketSafi</span>
+            <div className="flex flex-col">
+        <span className="font-heading font-bold text-xl tracking-wide text-white leading-none">
+          Yadi Tickets
+        </span>
+        <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-[0.2em] leading-none mt-1 group-hover:text-primary-hover transition-colors">
+          by Yadi
+        </span>
+      </div>
           </div>
-          <div className="mt-2 px-2 py-1 bg-white/5 rounded text-[10px] font-mono text-zinc-500 uppercase tracking-widest">
+          <div className="mt-5 px-2 py-1 bg-white/5 rounded text-[10px] font-mono text-zinc-500 uppercase tracking-widest">
             Organizer Portal
           </div>
         </div>

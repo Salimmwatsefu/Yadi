@@ -15,12 +15,23 @@ from .utils import send_ticket_email
 from events import models 
 from rest_framework.views import APIView
 from .services.wallet_client import WalletClient
+from django.conf import settings
 
 # --- AUTH RELATED VIEWS ---
 
 # Helper view to redirect Django's built-in password reset link to the React Frontend
 def password_reset_confirm_redirect(request, uidb64, token):
-    frontend_url = f"http://localhost:5173/password-reset/confirm/{uidb64}/{token}"
+    """
+    Redirects the email link to the correct Frontend URL depending on the environment.
+    """
+    if settings.DEBUG:
+        # Local Development (Vite)
+        domain = "http://localhost:5173"
+    else:
+        # Production (Ticketing Subdomain)
+        domain = "https://tickets.yadi.app"
+
+    frontend_url = f"{domain}/password-reset/confirm/{uidb64}/{token}"
     return redirect(frontend_url)
 
 
@@ -101,6 +112,12 @@ class InitiatePaymentView(views.APIView):
             return Response({"error": "Missing tier_id or phone number."}, status=status.HTTP_400_BAD_REQUEST)
 
         tier = get_object_or_404(TicketTier, id=tier_id)
+
+        if request.user.is_authenticated and request.user == tier.event.organizer:
+            return Response(
+                {"error": "Organizers cannot buy tickets for their own events."}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
         
         if tier.available_qty() <= 0:
             return Response({"error": "This ticket tier is sold out."}, status=status.HTTP_400_BAD_REQUEST)
@@ -117,7 +134,8 @@ class InitiatePaymentView(views.APIView):
                 defaults={
                     'username': f"{guest_name.split(' ')[0].lower()}_{uuid.uuid4().hex[:4]}",
                     'first_name': guest_name,
-                    'password': User.objects.make_random_password()
+                    'password': User.objects.make_random_password(),
+                    'is_guest': True
                 }
             )
 
@@ -502,3 +520,71 @@ class GetWalletLinkView(APIView):
             return Response(data) # Returns { "magic_link": "..." }
         except Exception as e:
             return Response({"error": str(e)}, status=500)
+        
+
+
+from django.utils.http import urlsafe_base64_decode
+from django.contrib.auth.tokens import default_token_generator
+from dj_rest_auth.utils import jwt_encode
+
+class ActivateGuestAccountView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        uidb64 = request.data.get('uid')
+        token = request.data.get('token')
+
+        if not uidb64 or not token:
+            return Response({"error": "Invalid link"}, status=400)
+
+        try:
+            uid = urlsafe_base64_decode(uidb64).decode()
+            user = User.objects.get(pk=uid)
+        except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+            return Response({"error": "User not found"}, status=400)
+
+        if default_token_generator.check_token(user, token):
+            # 1. ACTIVATE USER
+            user.is_active = True
+            user.is_guest = False
+            user.save()
+
+            # 2. GENERATE TOKENS
+            access_token, refresh_token = jwt_encode(user)
+            
+            # 3. PREPARE RESPONSE
+            data = {
+                "message": "Account activated",
+                "user": UserSerializer(user).data
+            }
+            response = Response(data, status=200)
+
+            # 4. SET COOKIES (Crucial for Auto-Login)
+            # Fetch cookie settings from project config
+            cookie_config = getattr(settings, 'REST_AUTH', {})
+            cookie_name = cookie_config.get('JWT_AUTH_COOKIE', 'ticketsafi-auth')
+            refresh_cookie_name = cookie_config.get('JWT_AUTH_REFRESH_COOKIE', 'ticketsafi-refresh')
+            secure_flag = cookie_config.get('JWT_AUTH_SECURE', True)
+            samesite_flag = cookie_config.get('JWT_AUTH_SAMESITE', 'Lax')
+
+            # Set Access Cookie
+            response.set_cookie(
+                key=cookie_name,
+                value=str(access_token),
+                httponly=True,
+                secure=secure_flag,
+                samesite=samesite_flag
+            )
+
+            # Set Refresh Cookie
+            response.set_cookie(
+                key=refresh_cookie_name,
+                value=str(refresh_token),
+                httponly=True,
+                secure=secure_flag,
+                samesite=samesite_flag
+            )
+
+            return response
+        
+        return Response({"error": "Invalid or expired token"}, status=400)

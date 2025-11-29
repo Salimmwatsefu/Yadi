@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Calendar, MapPin, Upload, Plus, Trash2, DollarSign, Ticket, CheckCircle, Loader2, X, Store } from 'lucide-react';
+import { Calendar, MapPin, Upload, Plus, Trash2, DollarSign, Ticket, CheckCircle, Layers, Loader2, X, Store } from 'lucide-react';
 import api from '../../api/axios';
 
 interface TierFormData {
@@ -15,7 +15,18 @@ interface StoreOption {
     name: string;
 }
 
+const CATEGORIES = [
+    { value: 'CONCERT', label: 'Concert' },
+    { value: 'FESTIVAL', label: 'Festival' },
+    { value: 'NIGHTLIFE', label: 'Nightlife' },
+    { value: 'THEATRE', label: 'Theatre' },
+    { value: 'SPORTS', label: 'Sports' },
+    { value: 'ARTS', label: 'Arts & Culture' },
+    { value: 'OTHER', label: 'Other' },
+];
+
 const CreateEventPage = () => {
+
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState(1);
@@ -27,6 +38,7 @@ const CreateEventPage = () => {
   const [location, setLocation] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [category, setCategory] = useState('CONCERT');
   
   // Store Selection State
   const [myStores, setMyStores] = useState<StoreOption[]>([]);
@@ -89,10 +101,12 @@ const CreateEventPage = () => {
       
       formData.append('title', title);
       formData.append('description', description);
+      formData.append('category', category);
       formData.append('location_name', location);
       formData.append('start_datetime', new Date(startDate).toISOString());
       formData.append('end_datetime', new Date(endDate).toISOString());
       formData.append('is_offline_ready', 'true');
+      
       
       // Append Store (if selected)
       if (selectedStore) {
@@ -163,6 +177,29 @@ const CreateEventPage = () => {
                 value={description}
                 onChange={e => setDescription(e.target.value)}
               />
+            </div>
+
+            {/* Category Select */}
+            <div>
+              <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">Category</label>
+              <div className="relative">
+                <Layers className="absolute left-4 top-4 w-5 h-5 text-zinc-500" />
+                <select 
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value)}
+                    className="w-full bg-black/20 border border-white/10 rounded-xl p-4 pl-12 text-white focus:border-primary outline-none appearance-none"
+                >
+                    {CATEGORIES.map(cat => (
+                        <option key={cat.value} value={cat.value} className="bg-zinc-900 text-white">
+                            {cat.label}
+                        </option>
+                    ))}
+                </select>
+                {/* Custom Arrow */}
+                <div className="absolute right-4 top-4 pointer-events-none text-zinc-500">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                </div>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

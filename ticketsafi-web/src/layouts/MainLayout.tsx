@@ -40,9 +40,14 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                     <Ticket className="text-white w-5 h-5 transform group-hover:rotate-12 transition-transform duration-300" />
                   </div>
               </div>
-              <span className="text-xl font-heading font-bold tracking-tight hidden sm:block group-hover:text-white transition-colors">
-                TicketSafi
-              </span>
+              <div className="flex flex-col">
+        <span className="font-heading font-bold text-xl tracking-wide text-white leading-none">
+          Yadi Tickets
+        </span>
+        <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-[0.2em] leading-none mt-1 group-hover:text-primary-hover transition-colors">
+          by Yadi
+        </span>
+      </div>
             </div>
 
             {/* Desktop Nav Links */}
@@ -50,13 +55,13 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
             <div className="hidden md:flex items-center space-x-6">
                 <button 
                     onClick={() => navigate('/')} 
-                    className={`text-sm font-medium transition-colors ${location.pathname === '/' ? 'text-white' : 'text-zinc-400 hover:text-white'}`}
+                    className={`text-sm font-medium transition-colors cursor-pointer ${location.pathname === '/' ? 'text-primary' : 'text-zinc-400 hover:text-primary-hover'}`}
                 >
                     Events
                 </button>
                 <button 
                     onClick={() => navigate('/stores')} 
-                    className={`text-sm font-medium transition-colors ${location.pathname.includes('/stores') ? 'text-white' : 'text-zinc-400 hover:text-white'}`}
+                    className={`text-sm font-medium transition-colors cursor-pointer ${location.pathname.includes('/stores') ? 'text-primary' : 'text-zinc-400 hover:text-primary-hover'}`}
                 >
                     Creators
                 </button>
@@ -130,9 +135,9 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center opacity-60 text-sm">
           <div className="flex items-center space-x-2 mb-4 md:mb-0">
              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-             <p>Systems Operational • Nairobi</p>
+             <p>Yadi Tickets • Nairobi, Kenya</p>
           </div>
-          <p className="hidden md:block">&copy; 2025 TicketSafi Kenya.</p>
+          <p className="hidden md:block">&copy; 2025 Yadi Kenya.</p>
           <div className="flex space-x-8">
             <span className="hover:text-primary cursor-pointer transition-colors">Privacy</span>
             <span className="hover:text-primary cursor-pointer transition-colors">Terms</span>
