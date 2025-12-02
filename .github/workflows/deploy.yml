@@ -1,4 +1,4 @@
-name: Deploy Yadi
+name: Build and Push Only
 
 on:
   push:
@@ -21,6 +21,7 @@ jobs:
       - name: Install Doppler CLI
         uses: dopplerhq/cli-action@v2
 
+      # Login to GitHub Container Registry
       - name: Log in to Registry
         uses: docker/login-action@v3
         with:
@@ -28,79 +29,15 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # --- BUILD FRONTEND ---
+      # Build Frontend (Baking in env vars from Doppler)
       - name: Build and Push Frontend
         run: |
-          # 1. Get secrets from Doppler, save to .env
-          # Vite needs this file to bake variables into the Javascript
           doppler secrets download --no-file --format env --token ${{ secrets.DOPPLER_TOKEN }} > ./ticketsafi-web/.env
-          
-          # 2. Build the image (Using GitHub's CPU)
           docker build -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend:latest ./ticketsafi-web
-          
-          # 3. Push image to storage
           docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend:latest
 
-      # --- BUILD BACKEND ---
+      # Build Backend
       - name: Build and Push Backend
         run: |
           docker build -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend:latest ./ticketsafi-backend
           docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend:latest
-
-  deploy:
-    needs: build-and-push
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-
-
-      # Copy the docker-compose.yml file to the server
-      - name: Copy Config
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.DROPLET_IP }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: "docker-compose.yml"
-          target: "/opt/yadi"
-          strip_components: 0
-          overwrite: true
-
-      # SSH in and run it
-      - name: Deploy
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.DROPLET_IP }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script: |
-            echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-            cd /opt/yadi
-            
-            # Get Runtime secrets
-            export DOPPLER_TOKEN=${{ secrets.DOPPLER_TOKEN }}
-            doppler secrets download --no-file --format docker > .env
-            
-            # Pull & Run
-            docker compose pull
-            docker compose up -d --remove-orphans
-            
-            # Migrate DB
-            docker compose exec -u root -T backend chown -R appuser:appuser /app/staticfiles /app/media || true
-            docker compose exec -T backend python manage.py migrate
-            docker compose exec -T backend python manage.py collectstatic --noinput
-            
-            docker system prune -f
-
-        # --- CLEANUP ANY ORPHAN SSH/ SCP PROCESSES ---
-      - name: Cleanup orphan processes
-        run: |
-          echo "Cleaning up any lingering SSH/SCP processes..."
-          pkill -9 ssh || true
-          pkill -9 scp || true
-          pkill -9 sftp-server || true
-
-
-          

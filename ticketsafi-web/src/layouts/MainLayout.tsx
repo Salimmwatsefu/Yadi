@@ -31,24 +31,25 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           {/* 1. Logo */}
           <div className="flex items-center gap-6">
             <div 
-              className="flex items-center space-x-3 cursor-pointer group" 
-              onClick={() => handleNav('/')}
-            >
-              <div className="relative w-10 h-10 flex items-center justify-center">
-                  <div className="absolute inset-0 bg-neon-gradient rounded-xl blur opacity-50 group-hover:opacity-100 transition-opacity duration-500"></div>
-                  <div className="relative w-10 h-10 bg-black rounded-xl flex items-center justify-center border border-white/10 z-10">
-                    <Ticket className="text-white w-5 h-5 transform group-hover:rotate-12 transition-transform duration-300" />
-                  </div>
-              </div>
-              <div className="flex flex-col">
-        <span className="font-heading font-bold text-xl tracking-wide text-white leading-none">
-          Yadi Tickets
-        </span>
-        <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-[0.2em] leading-none mt-1 group-hover:text-primary-hover transition-colors">
-          by Yadi
-        </span>
-      </div>
-            </div>
+  className="flex items-center space-x-2 cursor-pointer group" 
+  onClick={() => handleNav('/')}
+>
+  <div className="relative w-32 flex items-center justify-center">
+    
+    {/* Glow background */}
+    <div className="absolute inset-0 bg-transparent rounded-xl blur opacity-90 group-hover:opacity-100 transition-opacity duration-500"></div>
+    
+    {/* Logo container */}
+    <div className="relative">
+      <img 
+        src="/Logo.png" 
+        alt="Yadi Logo"
+        className="md:w-40 w-32  object-contain transform group-hover:rotate-12 transition-transform duration-300"
+      />
+    </div>
+
+  </div>
+  </div>
 
             {/* Desktop Nav Links */}
             <div className="hidden md:block h-6 w-px bg-white/10"></div>

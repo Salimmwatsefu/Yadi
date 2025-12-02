@@ -9,7 +9,7 @@ from rest_framework.response import Response
 from allauth.socialaccount.providers.google.views import GoogleOAuth2Adapter
 from dj_rest_auth.registration.views import SocialLoginView
 
-from .models import User, Event, Ticket, TicketTier, Payment
+from .models import User, Event, Ticket, TicketTier, Payment, OrganizerInvitationCode
 from .serializers import EventListSerializer, EventDetailSerializer, EventCreateUpdateSerializer, TicketSerializer, UserSerializer
 from .utils import send_ticket_email
 from events import models 
@@ -41,6 +41,32 @@ class GoogleLogin(SocialLoginView):
 
 
 # --- PUBLIC FACING VIEWS ---
+
+class InvitationCodeCheckView(APIView):
+    """
+    Public endpoint to check if an Organizer Invitation Code is valid and active.
+    Checks hard-coded reusable codes first, then the database.
+    """
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        code = request.data.get('code')
+        if not code:
+            return Response({"valid": False, "error": "Code required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # --- HARD-CODED REUSABLE CODES (YADI-ORG-1, YADI-ORG-2) ---
+        REUSABLE_CODES = ['YADI-ORG-1', 'YADI-ORG-2']
+        if code.upper() in REUSABLE_CODES:
+             return Response({"valid": True}, status=status.HTTP_200_OK)
+        # -----------------------------------------------------------
+
+        try:
+            # Check for a database-managed code 
+            OrganizerInvitationCode.objects.get(code__iexact=code, is_active=True)
+            return Response({"valid": True}, status=status.HTTP_200_OK)
+        except OrganizerInvitationCode.DoesNotExist:
+            return Response({"valid": False, "error": "Invalid or expired code."}, status=status.HTTP_404_NOT_FOUND)
+
 
 class EventListView(generics.ListAPIView):
     """
@@ -93,9 +119,7 @@ class EventDetailView(generics.RetrieveAPIView):
 
 # --- PURCHASE & PAYMENT VIEWS ---
 
-# ticketsafi-backend/events/views.py
-
-from .services.wallet_client import WalletClient # Ensure this import exists
+from .services.wallet_client import WalletClient 
 
 class InitiatePaymentView(views.APIView):
     permission_classes = [permissions.AllowAny]
@@ -104,12 +128,17 @@ class InitiatePaymentView(views.APIView):
         data = request.data
         
         tier_id = data.get('tier_id')
-        phone_number = data.get('phone_number')
+        phone_number = data.get('phone_number') 
         guest_email = data.get('email')
         guest_name = data.get('name')
+        # NEW: Get Quantity (default to 1)
+        try:
+            quantity = int(data.get('quantity', 1))
+        except ValueError:
+             return Response({"error": "Invalid quantity."}, status=status.HTTP_400_BAD_REQUEST)
         
-        if not tier_id or not phone_number:
-            return Response({"error": "Missing tier_id or phone number."}, status=status.HTTP_400_BAD_REQUEST)
+        if not tier_id:
+            return Response({"error": "Missing tier_id."}, status=status.HTTP_400_BAD_REQUEST)
 
         tier = get_object_or_404(TicketTier, id=tier_id)
 
@@ -119,68 +148,116 @@ class InitiatePaymentView(views.APIView):
                 status=status.HTTP_403_FORBIDDEN
             )
         
-        if tier.available_qty() <= 0:
-            return Response({"error": "This ticket tier is sold out."}, status=status.HTTP_400_BAD_REQUEST)
+        # Check against total group quantity
+        if tier.available_qty() < quantity: 
+            return Response({"error": f"Only {tier.available_qty()} tickets are available."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # --- 1. Identify Owner ---
+        # --- 1. Identify Owner (or create Guest User) ---
         if request.user.is_authenticated:
             owner = request.user
         else:
             if not guest_email or not guest_name:
                 return Response({"error": "Guest details required."}, status=status.HTTP_400_BAD_REQUEST)
             
+            # Use '254700000000' as a safe default if no phone number provided for guest
+            owner_phone = phone_number if phone_number else '254700000000' 
+
             owner, created = User.objects.get_or_create(
                 email=guest_email,
                 defaults={
                     'username': f"{guest_name.split(' ')[0].lower()}_{uuid.uuid4().hex[:4]}",
                     'first_name': guest_name,
                     'password': User.objects.make_random_password(),
-                    'is_guest': True
+                    'is_guest': True,
+                    'phone_number': owner_phone 
                 }
             )
-
-        # --- 2. Generate Reference ---
-        ticket_ref = f"TS-{uuid.uuid4().hex[:12].upper()}"
-
-        # --- 3. CREATE PAYMENT RECORD FIRST (Pending) ---
-        # We do this BEFORE calling the wallet so the Webhook finds it.
-        payment = Payment.objects.create(
-            user=owner,
-            event=tier.event,
-            tier=tier,
-            amount=tier.price,
-            phone_number=phone_number,
-            reference_code=ticket_ref,
-            status=Payment.Status.PENDING
-        )
-
-        # --- 4. Call Wallet Service ---
-        try:
-            client = WalletClient()
-            organizer_id = tier.event.organizer.id
+        
+        # --- NEW: FREE TICKET FLOW (Price == 0) ---
+        if tier.price == 0:
+            # Generate a single identifier for the entire group
+            group_qr_hash = f"G-{uuid.uuid4().hex}"
+            payment_ref = f"FREE-{uuid.uuid4().hex[:12].upper()}"
             
-            wallet_response = client.collect_payment(
-                organizer_id=organizer_id,
-                phone=phone_number,
+            # Create COMPLETED Payment record (for logging)
+            payment = Payment.objects.create(
+                user=owner,
+                event=tier.event,
+                tier=tier,
+                amount=0,
+                phone_number=owner.phone_number or '254700000000', 
+                reference_code=payment_ref,
+                status=Payment.Status.COMPLETED 
+            )
+            
+            # Create all N tickets in a loop
+            tickets_created = []
+            for i in range(quantity):
+                # The first ticket will be the one used for the QR image/email.
+                # All tickets in the group point to the same group_qr_hash.
+                ticket = Ticket.objects.create(
+                    event=tier.event,
+                    tier=tier,
+                    owner=owner,
+                    attendee_name=f"{guest_name} ({i+1}/{quantity})" if quantity > 1 else guest_name,
+                    attendee_email=guest_email or owner.email,
+                    qr_code_hash=group_qr_hash # Set the shared hash
+                )
+                tickets_created.append(ticket)
+            
+            # Send Email (only need one ticket for the QR image)
+            send_ticket_email(tickets_created[0])
+            
+            # Return success (return ID of the first ticket for the frontend redirect)
+            return Response({
+                "status": "Booking Confirmed",
+                "transaction_ref": payment_ref,
+                "ticket_id": str(tickets_created[0].id),
+                "quantity": quantity
+            }, status=status.HTTP_201_CREATED)
+
+        # --- PAID TICKET FLOW (Restrict Group Purchases) ---
+        else:
+            if quantity > 1:
+                return Response({"error": "Group purchases for paid tickets are not yet supported. Please register one at a time."}, status=status.HTTP_400_BAD_REQUEST)
+        
+            # --- PAID TICKET FLOW (Single Ticket Logic) ---
+            ticket_ref = f"TS-{uuid.uuid4().hex[:12].upper()}"
+
+            # 3. CREATE PAYMENT RECORD FIRST (Pending)
+            payment = Payment.objects.create(
+                user=owner,
+                event=tier.event,
+                tier=tier,
                 amount=tier.price,
-                ticket_ref=ticket_ref
+                phone_number=phone_number,
+                reference_code=ticket_ref,
+                status=Payment.Status.PENDING
             )
 
-            return Response({
-                "status": "Payment Initiated",
-                "transaction_ref": ticket_ref,
-                "mpesa_ref": wallet_response.get('mpesa_ref')
-            }, status=status.HTTP_202_ACCEPTED)
+            # 4. Call Wallet Service
+            try:
+                client = WalletClient()
+                organizer_id = tier.event.organizer.id
+                
+                wallet_response = client.collect_payment(
+                    organizer_id=organizer_id,
+                    phone=phone_number,
+                    amount=tier.price,
+                    ticket_ref=ticket_ref
+                )
 
-        except Exception as e:
-            # If the wallet call fails, mark payment as failed
-            payment.status = Payment.Status.FAILED
-            payment.save()
-            print(f"Wallet Payment Error: {e}")
-            return Response({"error": "Payment service unavailable."}, status=503)
+                return Response({
+                    "status": "Payment Initiated",
+                    "transaction_ref": ticket_ref,
+                    "mpesa_ref": wallet_response.get('mpesa_ref')
+                }, status=status.HTTP_202_ACCEPTED)
 
-
-    
+            except Exception as e:
+                payment.status = Payment.Status.FAILED
+                payment.save()
+                print(f"Wallet Payment Error: {e}")
+                return Response({"error": "Payment service unavailable."}, status=503)
 
 
 class UserTicketsView(generics.ListAPIView):
@@ -314,10 +391,9 @@ class OrganizerEventAttendeesView(generics.ListAPIView):
     
 
 
-
 class VerifyTicketView(APIView):
     """
-    Endpoint for Gate Scanners to verify tickets.
+    Endpoint for Gate Scanners to verify tickets, now supporting sequential group scanning.
     POST /api/scanner/verify/
     Payload: { "qr_hash": "..." }
     """
@@ -333,41 +409,57 @@ class VerifyTicketView(APIView):
             return Response({"error": "No QR code provided."}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            # 2. Lookup Ticket
-            ticket = Ticket.objects.get(qr_code_hash=qr_hash)
+            # 2. Lookup ALL Tickets for this Hash/Group
+            # Order by purchase_date ensures sequential check-in based on creation order
+            group_tickets = Ticket.objects.filter(qr_code_hash=qr_hash).order_by('purchase_date')
             
-            # 3. Check Event Ownership (If user is Organizer)
-            if request.user.role == User.Role.ORGANIZER and ticket.event.organizer != request.user:
-                 return Response({"error": "This ticket does not belong to your event."}, status=status.HTTP_403_FORBIDDEN)
+            if not group_tickets.exists():
+                return Response({"error": "Ticket Not Found"}, status=status.HTTP_404_NOT_FOUND)
 
-            # 4. Validate Status
-            if ticket.status == Ticket.Status.CHECKED_IN:
+            # 3. Find the NEXT AVAILABLE ticket (status=ACTIVE) in the group
+            ticket_to_check_in = group_tickets.filter(status=Ticket.Status.ACTIVE).first()
+            
+            if not ticket_to_check_in:
+                # All tickets in the group are already checked in
+                first_ticket = group_tickets.first()
                 return Response({
-                    "error": "ALREADY USED",
-                    "attendee_name": ticket.attendee_name,
-                    "tier_name": ticket.tier.name,
-                    "checked_in_at": ticket.checked_in_at
+                    "error": "ALL TICKETS USED",
+                    "attendee_name": first_ticket.attendee_name,
+                    "tier_name": first_ticket.tier.name,
+                    "total_in_group": group_tickets.count(),
+                    "checked_in_count": group_tickets.filter(status=Ticket.Status.CHECKED_IN).count()
                 }, status=status.HTTP_409_CONFLICT)
+
+
+            # 4. Check Event Ownership
+            if request.user.role == User.Role.ORGANIZER and ticket_to_check_in.event.organizer != request.user:
+                 return Response({"error": "This ticket does not belong to your event."}, status=status.HTTP_403_FORBIDDEN)
             
-            if ticket.status != Ticket.Status.ACTIVE:
-                return Response({"error": f"Invalid Ticket Status: {ticket.status}"}, status=status.HTTP_400_BAD_REQUEST)
-
-            # 5. SUCCESS: Check In
-            ticket.status = Ticket.Status.CHECKED_IN
-            ticket.checked_in_at = timezone.now()
-            ticket.checked_in_by = request.user
-            ticket.save()
-
+            # 5. SUCCESS: Check In the found ACTIVE ticket
+            ticket_to_check_in.status = Ticket.Status.CHECKED_IN
+            ticket_to_check_in.checked_in_at = timezone.now()
+            ticket_to_check_in.checked_in_by = request.user
+            ticket_to_check_in.save()
+            
+            # 6. Return updated group status
+            total_in_group = group_tickets.count()
+            checked_in_count = group_tickets.filter(status=Ticket.Status.CHECKED_IN).count()
+            
+            # Update the ticket page to reflect sequential scanning
             return Response({
                 "status": "VALID",
-                "attendee_name": ticket.attendee_name,
-                "tier_name": ticket.tier.name,
-                "event": ticket.event.title
+                "attendee_name": ticket_to_check_in.attendee_name,
+                "tier_name": ticket_to_check_in.tier.name,
+                "event": ticket_to_check_in.event.title,
+                "group_status": f"Checked in {checked_in_count} of {total_in_group}"
             }, status=status.HTTP_200_OK)
 
         except Ticket.DoesNotExist:
             return Response({"error": "Ticket Not Found"}, status=status.HTTP_404_NOT_FOUND)
-        
+        except Exception as e:
+             print(f"VerifyTicketView Error: {e}")
+             return Response({"error": "Invalid QR Hash or System Error"}, status=status.HTTP_400_BAD_REQUEST)
+    
 
 
 # --- TEAM MANAGEMENT VIEWS ---

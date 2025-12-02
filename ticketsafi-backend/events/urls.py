@@ -5,9 +5,6 @@ from .views import ( ActivateGuestAccountView, EventListView, EventDetailView, G
                     )
 
 
-
-
-
 urlpatterns = [
  
     path('events/', EventListView.as_view(), name='event-list'),
@@ -16,6 +13,7 @@ urlpatterns = [
     # Payment Route
     path('pay/initiate/', InitiatePaymentView.as_view(), name='pay-initiate'),
 
+    # --- REMOVED: path('auth/check-code/', ...) ---
 
     path('tickets/', UserTicketsView.as_view(), name='user-tickets'),
     path('tickets/<uuid:id>/', TicketDetailView.as_view(), name='ticket-detail'),
@@ -25,7 +23,7 @@ urlpatterns = [
     path('organizer/events/create/', OrganizerEventCreateView.as_view(), name='organizer-event-create'),
     path('organizer/events/', OrganizerEventListView.as_view(), name='organizer-event-list'),
     # Change <uuid:pk> to <uuid:id>
-path('organizer/events/<uuid:id>/attendees/', OrganizerEventAttendeesView.as_view(), name='organizer-event-attendees'),
+    path('organizer/events/<uuid:id>/attendees/', OrganizerEventAttendeesView.as_view(), name='organizer-event-attendees'),
     # NEW: Edit/Delete Route
     path('organizer/events/<uuid:id>/edit/', OrganizerEventUpdateView.as_view(), name='organizer-event-edit'),
 

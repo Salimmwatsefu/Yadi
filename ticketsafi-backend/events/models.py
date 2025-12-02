@@ -104,7 +104,7 @@ class Ticket(models.Model):
     attendee_email = models.EmailField(blank=True, null=True)
     # ------------------------------------
 
-    qr_code_hash = models.CharField(max_length=255, unique=True, editable=False)
+    qr_code_hash = models.CharField(max_length=255, editable=False) 
     purchase_date = models.DateTimeField(auto_now_add=True)
     
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.ACTIVE)
@@ -150,3 +150,13 @@ class Payment(models.Model):
 
     def __str__(self):
         return f"{self.phone_number} - {self.amount}"
+
+# --- NEW MODEL: Organizer Invitation Code ---
+class OrganizerInvitationCode(models.Model):
+    code = models.CharField(max_length=20, unique=True, help_text="The secret code for organizer registration.")
+    is_active = models.BooleanField(default=True)
+    times_used = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    def __str__(self):
+        return self.code

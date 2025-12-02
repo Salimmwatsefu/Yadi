@@ -41,7 +41,7 @@ const AuthSelectionPage = () => {
 
             {/* Option 2: Organizer / Seller */}
             <div 
-                onClick={() => navigate('/login/organizer')}
+                onClick={() => navigate('/login/organizer')} 
                 className="group relative bg-surface border border-white/10 hover:border-secondary/50 p-8 rounded-3xl cursor-pointer transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_0_30px_rgba(139,92,246,0.15)]"
             >
                 <div className="w-14 h-14 bg-surface-highlight rounded-2xl flex items-center justify-center mb-6 group-hover:bg-secondary group-hover:text-white transition-colors text-secondary">

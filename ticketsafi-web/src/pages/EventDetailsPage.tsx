@@ -12,10 +12,23 @@ const EventDetailsPage = () => {
   
   // State for Selection & Modal
   const [selectedTier, setSelectedTier] = useState<string | null>(null);
+  const [quantity, setQuantity] = useState(1); 
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
 
   // Helper to get selected tier details
   const selectedTierData = event?.tiers?.find(t => t.id === selectedTier);
+
+  const handleSelectTier = (tierId: string) => {
+      setSelectedTier(tierId);
+      setQuantity(1); // Reset quantity on new tier selection
+  }
+  
+  const singlePriceValue = selectedTierData 
+      ? parseFloat(selectedTierData.price.replace('KES ', '').replace(/,/g, ''))
+      : 0;
+
+  const totalPrice = `KES ${(singlePriceValue * quantity).toLocaleString()}`;
+
 
   if (loading) return (
     <div className="flex items-center justify-center min-h-screen bg-background">
@@ -40,7 +53,8 @@ const EventDetailsPage = () => {
           onClose={() => setIsCheckoutOpen(false)}
           tierId={selectedTierData.id}
           tierName={selectedTierData.name}
-          price={selectedTierData.price}
+          price={selectedTierData.price} // Single ticket price
+          quantity={quantity} // NEW PROP
         />
       )}
       
@@ -170,7 +184,7 @@ const EventDetailsPage = () => {
                                   return (
                                     <div 
                                         key={tier.id}
-                                        onClick={() => setSelectedTier(tier.id)}
+                                        onClick={() => handleSelectTier(tier.id)}
                                         className={`relative p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 group ${
                                             isSelected 
                                             ? 'bg-primary/5 border-primary shadow-[0_0_15px_rgba(236,72,153,0.15)]' 
@@ -198,27 +212,49 @@ const EventDetailsPage = () => {
                                   );
                               })}
                            </div>
+                           
+                           {/* --- QUANTITY SELECTOR (NEW) --- */}
+                           {selectedTierData && (
+                                <div className="mt-6 pt-6 border-t border-white/10 space-y-4">
+                                    <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">Quantity (1 - 10)</label>
+                                    <input
+                                        type="number"
+                                        min="1"
+                                        max="10" 
+                                        // Fix 1: Use value={0 ? '' : quantity} to allow clearing, and let 1 be the final clipped value
+                                        value={quantity === 0 ? '' : quantity} 
+                                        onChange={(e) => {
+                                            const rawValue = e.target.value;
+                                            if (rawValue === '') {
+                                                setQuantity(0); // Allow temporary empty state
+                                            } else {
+                                                const val = parseInt(rawValue);
+                                                if (!isNaN(val)) {
+                                                    // Ensure the value is clipped between 1 and 10 on valid input
+                                                    setQuantity(Math.min(10, Math.max(1, val))); 
+                                                }
+                                            }
+                                        }}
+                                        className="w-full bg-black/20 border border-white/10 rounded-xl p-4 text-white text-lg focus:border-primary outline-none"
+                                    />
+                                </div>
+                           )}
+
 
                            {/* Desktop Buy Button */}
                            <div className="mt-6 pt-6 border-t border-white/10 hidden md:block">
                                <div className="flex justify-between items-center mb-4">
-                                   <span className="text-zinc-400">Total Amount</span>
+                                   <span className="text-zinc-400">Total Amount ({quantity} {quantity > 1 ? 'Tickets' : 'Ticket'})</span>
                                    <span className="text-2xl font-bold text-white">
-                                       {selectedTier 
-                                         ? `KES ${event.tiers?.find(t => t.id === selectedTier)?.price}` 
-                                         : 'KES 0.00'}
+                                       {totalPrice}
                                    </span>
                                </div>
                                <button 
-                                 disabled={!selectedTier}
+                                 disabled={!selectedTier || quantity === 0}
                                  onClick={() => setIsCheckoutOpen(true)}
-                                 className={`w-full py-4 rounded-xl font-bold text-white transition-all ${
-                                     selectedTier 
-                                     ? 'bg-neon-gradient shadow-neon hover:scale-[1.02]' 
-                                     : 'bg-zinc-800 cursor-not-allowed opacity-50'
-                                 }`}
+                                 className={`w-full py-4 rounded-xl font-bold text-white transition-all ${selectedTier ? 'bg-neon-gradient shadow-neon hover:scale-[1.02]' : 'bg-zinc-800 cursor-not-allowed opacity-50'}`}
                                >
-                                 {selectedTier ? 'Proceed to Payment' : 'Select a Ticket'}
+                                 {selectedTier ? `Proceed to Checkout for ${quantity}` : 'Select a Ticket'}
                                </button>
                            </div>
                       </div>
@@ -233,21 +269,15 @@ const EventDetailsPage = () => {
               <div className="flex flex-col">
                   <p className="text-xs text-zinc-400 uppercase font-bold">Total</p>
                   <p className="text-xl font-bold text-white">
-                      {selectedTier 
-                        ? `KES ${event.tiers?.find(t => t.id === selectedTier)?.price}` 
-                        : '---'}
+                      {totalPrice}
                   </p>
               </div>
               <button 
-                disabled={!selectedTier}
+                disabled={!selectedTier || quantity === 0}
                 onClick={() => setIsCheckoutOpen(true)}
-                className={`flex-1 px-6 py-3.5 rounded-xl font-bold text-white transition-all ${
-                    selectedTier 
-                    ? 'bg-neon-gradient shadow-neon' 
-                    : 'bg-zinc-800 cursor-not-allowed text-zinc-500'
-                }`}
+                className={`flex-1 px-6 py-3.5 rounded-xl font-bold text-white transition-all ${selectedTier ? 'bg-neon-gradient shadow-neon' : 'bg-zinc-800 cursor-not-allowed text-zinc-500'}`}
               >
-                {selectedTier ? 'Checkout' : 'Select Ticket'}
+                {selectedTier ? `Checkout for ${quantity}` : 'Select Ticket'}
               </button>
           </div>
       </div>

@@ -15,6 +15,8 @@ DEBUG = config('DEBUG', default=True, cast=bool)
 
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', cast=Csv())
 
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
 
 
 
@@ -82,7 +84,9 @@ DATABASES = {
     'default': config(
         'DATABASE_URL',
         default='sqlite:///' + str(BASE_DIR / 'db.sqlite3'),
-        cast=dj_database_url.parse
+        cast=dj_database_url.parse,
+        conn_max_age=600,
+        ssl_require=True
     )
 }
 
@@ -106,10 +110,7 @@ TIME_ZONE = 'Africa/Nairobi'
 USE_I18N = True
 USE_TZ = True
 
-# --- STATIC & MEDIA ---
-STATIC_URL = 'static/'
-MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
 
 
 
@@ -243,7 +244,43 @@ SOCIALACCOUNT_PROVIDERS = {
 
 
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+USE_SPACES = config('USE_SPACES', default=False, cast=bool)
+
+if USE_SPACES:
+    # Settings for DigitalOcean Spaces
+    AWS_ACCESS_KEY_ID = config('AWS_ACCESS_KEY_ID')
+    AWS_SECRET_ACCESS_KEY = config('AWS_SECRET_ACCESS_KEY')
+    AWS_STORAGE_BUCKET_NAME = config('AWS_STORAGE_BUCKET_NAME')
+    AWS_S3_ENDPOINT_URL = config('AWS_S3_ENDPOINT_URL') # e.g. https://nyc3.digitaloceanspaces.com
+    AWS_S3_OBJECT_PARAMETERS = {'CacheControl': 'max-age=86400'}
+    AWS_DEFAULT_ACL = 'public-read'
+    
+    # CDN Configuration (The "Enable CDN" part)
+    AWS_S3_CUSTOM_DOMAIN = config('AWS_S3_CUSTOM_DOMAIN', default=None) 
+
+    # Static & Media Storage
+    STORAGES = {
+        "default": {
+            "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+            "OPTIONS": {
+                "location": "media", # Store files in 'media' folder
+            },
+        },
+        "staticfiles": {
+            # Keep static files (CSS/JS) local or via Whitenoise for speed/simplicity
+            "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+        },
+    }
+    
+    MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/media/' if AWS_S3_CUSTOM_DOMAIN else f'{AWS_S3_ENDPOINT_URL}/{AWS_STORAGE_BUCKET_NAME}/media/'
+
+else:
+    # Local Development Fallback
+    STATIC_URL = 'static/'
+    MEDIA_URL = '/media/'
+    MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+    STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+    STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 
 SOCIALACCOUNT_ADAPTER = 'events.adapters.CustomSocialAccountAdapter'

@@ -3,7 +3,7 @@ import json
 from django.conf import settings
 from rest_framework import serializers
 from django.db.models import Min
-from .models import User, Event, TicketTier, Ticket, Payment
+from .models import User, Event, TicketTier, Ticket, Payment, OrganizerInvitationCode 
 from stores.models import Store
 from allauth.account.forms import ResetPasswordForm
 from django.contrib.auth.tokens import default_token_generator
@@ -32,14 +32,16 @@ class UserSerializer(serializers.ModelSerializer):
 class CustomRegisterSerializer(serializers.ModelSerializer):
     role = serializers.ChoiceField(choices=User.Role.choices, default=User.Role.ATTENDEE)
     password2 = serializers.CharField(style={'input_type': 'password'}, write_only=True)
-
     email = serializers.EmailField(required=True)
+    
+    # NEW FIELD FOR ORGANIZER ACCESS CONTROL
+    invitation_code = serializers.CharField(required=False, allow_blank=True, write_only=True)
 
     class Meta:
         model = User
-        fields = ['username', 'email', 'password', 'password2', 'role']
+        fields = ['username', 'email', 'password', 'password2', 'role', 'invitation_code']
         extra_kwargs = {'password': {'write_only': True}}
-
+        
     def validate_email(self, email):
         user = User.objects.filter(email=email).first()
         if user:
@@ -51,37 +53,75 @@ class CustomRegisterSerializer(serializers.ModelSerializer):
     def validate(self, data):
         if data['password'] != data['password2']:
             raise serializers.ValidationError({"password": "Passwords must match."})
+            
+        # --- HARD-CODED REUSABLE CODES LIST ---
+        REUSABLE_CODES = ['YADI-ORG-2025', 'YADI-ORG-2026']
+        
+        # --- ORGANIZER INVITATION CODE VALIDATION ---
+        if data.get('role') == User.Role.ORGANIZER:
+            code = data.get('invitation_code')
+            if not code:
+                raise serializers.ValidationError({"invitation_code": "An invitation code is required to register as an Organizer."})
+            
+            # 1. Check Reusable Codes (Bypass DB lookup if matched)
+            if code.upper() in REUSABLE_CODES:
+                # Use a dictionary to flag the code as reusable, as it's not a model instance
+                data['invitation_data'] = {'code': code.upper(), 'reusable': True} 
+                return data
+
+            # 2. Check Database Codes (Original logic)
+            try:
+                # Check for an active, SINGLE-USE code
+                invitation = OrganizerInvitationCode.objects.get(code=code, is_active=True)
+                data['invitation_data'] = invitation # Store instance for use in save()
+                data['invitation_data'].reusable = False 
+            except OrganizerInvitationCode.DoesNotExist:
+                raise serializers.ValidationError({"invitation_code": "Invalid or expired invitation code."})
+
         return data
 
     def save(self, request):
         email = self.validated_data['email']
         username = self.validated_data['username']
         password = self.validated_data['password']
+        role = self.validated_data['role']
+        # Pop the stored invitation data
+        invitation_data = self.validated_data.pop('invitation_data', None) 
         
         user = User.objects.filter(email=email).first()
         is_new_user = False
 
         if user:
-            # GUEST FLOW: Overwrite & Claim
+            # GUEST FLOW
             if not getattr(user, 'is_guest', False):
-                 # Should have been caught by validate_email, but safety first
                  raise serializers.ValidationError("User exists.")
                  
             user.username = username
             user.set_password(password)
-            user.is_active = False # Lock until verified
-            user.is_guest = False  # They are claiming it now
+            user.role = role 
+            user.is_active = False 
+            user.is_guest = False  
             user.save()
         else:
-            # NEW USER FLOW: Create Inactive
+            # NEW USER FLOW
             user = User.objects.create_user(
                 username=username,
                 email=email,
                 password=password,
-                is_active=False, # <--- KEY CHANGE: Lock immediately
+                role=role, 
+                is_active=False, 
                 is_guest=False
             )
             is_new_user = True
+            
+        # --- NEW: MARK INVITATION CODE AS USED (Conditional Logic) ---
+        if invitation_data and not getattr(invitation_data, 'reusable', False): 
+            # This handles single-use codes (database instances)
+            invitation_data.is_active = False 
+            invitation_data.times_used += 1
+            invitation_data.save()
+        # If invitation_data exists and is reusable (hard-coded), we skip saving, thus keeping it active.
+
 
         # --- SHARED ACTIVATION LOGIC ---
         token = default_token_generator.make_token(user)
@@ -102,15 +142,14 @@ class CustomRegisterSerializer(serializers.ModelSerializer):
 
     def send_activation_email(self, user, url, is_new_user):
         if is_new_user:
-            subject = "Activate your TicketSafi Account"
-            body = f"Welcome to TicketSafi!\n\nClick here to verify your email:\n{url}"
+            subject = "Activate your Yadi Tickets Account"
+            body = f"Welcome to Yadi Tickets!\n\nClick here to verify your email:\n{url}"
         else:
-            subject = "Verify your TicketSafi Account"
+            subject = "Verify your Yadi Tickets Account"
             body = f"We found your guest tickets!\n\nClick here to verify this is you and claim your account:\n{url}"
 
         email = EmailMessage(subject, body, to=[user.email])
         email.send()
-
 
         
 

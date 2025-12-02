@@ -1,6 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { GoogleOAuthProvider } from '@react-oauth/google'; // 1. Import Google Provider
+import { GoogleOAuthProvider } from '@react-oauth/google'; 
 import { AuthProvider } from './context/AuthContext';
 
 import MainLayout from './layouts/MainLayout';
@@ -22,10 +22,6 @@ import StorePage from './pages/StorePage';
 import EditStorePage from './pages/organizer/EditStorePage';
 import PayoutsPage from './pages/organizer/PayoutsPage';
 
-
-
-
-
 // Auth Pages
 import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
@@ -34,43 +30,38 @@ import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
 import PasswordResetConfirmPage from './pages/auth/PasswordResetConfirmPage';
 import ScannerPage from './pages/scanner/ScannerPage';
 import AccountActivationPage from './pages/auth/AccountActivationPage';
-// ...
-
+import OrganizerGatePage from './pages/auth/OrganizerGatePage';
 
 import ScannerRoute from './layouts/ScannerRoute';
 import TeamPage from './pages/organizer/TeamPage';
 import ScrollToTop from './components/ScrollToTop';
-
 
 const OrganizerRoute = ({ children }: { children: React.ReactNode }) => (
   <OrganizerLayout>{children}</OrganizerLayout>
 );
 
 function App() {
-  // Replace with your actual Client ID from Google Cloud Console
   const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
   return (
-    // 2. Wrap everything in GoogleOAuthProvider
     <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
       <AuthProvider>
         <Router>
           <ScrollToTop />
           <Routes>
             {/* --- AUTH ROUTES --- */}
-             {/* --- AUTH ROUTES --- */}
-          <Route path="/auth/select" element={<AuthSelectionPage />} />
-          <Route path="/login" element={<AuthSelectionPage />} /> {/* Redirect generic login to selection */}
-          
-          {/* Parametrized Routes */}
-          <Route path="/login/:type" element={<LoginPage />} />
-          <Route path="/register/:type" element={<RegisterPage />} />
-          <Route path="/activate/:uid/:token" element={<AccountActivationPage />} />
+            <Route path="/auth/select" element={<AuthSelectionPage />} />
+            <Route path="/login" element={<AuthSelectionPage />} /> 
+            
+            {/* NEW: Explicit Gate Route (Avoids conflict with Login/Register paths) */}
+            <Route path="/organizer/gate/:action" element={<OrganizerGatePage />} />
 
-          
-
-          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-            {/* This route handles the link sent in email (e.g., /password-reset/confirm/MQ/5z8-...) */}
+            {/* Parametrized Login/Register Routes */}
+            <Route path="/login/:type" element={<LoginPage />} />
+            <Route path="/register/:type" element={<RegisterPage />} />
+            
+            <Route path="/activate/:uid/:token" element={<AccountActivationPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
             <Route path="/password-reset/confirm/:uid/:token" element={<PasswordResetConfirmPage />} />
 
             {/* --- PUBLIC ROUTES --- */}
@@ -99,69 +90,25 @@ function App() {
             } />
 
             <Route path="/stores" element={<MainLayout><StoresListPage /></MainLayout>} />
-<Route path="/stores/:slug" element={<MainLayout><StorePage /></MainLayout>} />
+            <Route path="/stores/:slug" element={<MainLayout><StorePage /></MainLayout>} />
 
-           {/* --- ORGANIZER ROUTES (Organizer Layout) --- */}
-        <Route path="/organizer" element={
-          <OrganizerRoute>
-            <DashboardPage />
-          </OrganizerRoute>
-        } />
-        
-        {/* NEW CREATE ROUTE */}
-        <Route path="/organizer/create" element={
-          <OrganizerRoute>
-            <CreateEventPage />
-          </OrganizerRoute>
-        } />
+           {/* --- ORGANIZER ROUTES --- */}
+            <Route path="/organizer" element={<OrganizerRoute><DashboardPage /></OrganizerRoute>} />
+            <Route path="/organizer/create" element={<OrganizerRoute><CreateEventPage /></OrganizerRoute>} />
+            <Route path="/organizer/events" element={<OrganizerRoute><MyEventsPage /></OrganizerRoute>} />
+            <Route path="/organizer/events/:id" element={<OrganizerRoute><OrganizerEventDetailsPage /></OrganizerRoute>} />
+            <Route path="/organizer/events/:id/edit" element={<OrganizerRoute><EditEventPage /></OrganizerRoute>} />
+            <Route path="/organizer/store/create" element={<OrganizerRoute><CreateStorePage /></OrganizerRoute>} />
+            <Route path="/organizer/stores" element={<OrganizerRoute><MyStoresPage /></OrganizerRoute>} />
+            <Route path="/organizer/store/:id/edit" element={<OrganizerRoute><EditStorePage /></OrganizerRoute>} />
+            <Route path="/organizer/team" element={<OrganizerRoute><TeamPage /></OrganizerRoute>} />
+            <Route path="/organizer/payouts" element={<OrganizerRoute><PayoutsPage /></OrganizerRoute>} />
 
-        <Route path="/organizer/events" element={
-          <OrganizerRoute>
-            <MyEventsPage /> 
-          </OrganizerRoute>
-        } />
-
-
-        <Route path="/organizer/events/:id" element={
-              <OrganizerRoute>
-                <OrganizerEventDetailsPage />
-              </OrganizerRoute>
-            } />
-
-        
-
-
-        <Route path="/organizer/events/:id/edit" element={
-              <OrganizerRoute>
-                <EditEventPage />
-              </OrganizerRoute>
-            } />
-
-
-           <Route path="/organizer/store/create" element={
-          <OrganizerRoute>
-            <CreateStorePage />
-          </OrganizerRoute>
-        } />
-
-        <Route path="/organizer/stores" element={<OrganizerRoute><MyStoresPage /></OrganizerRoute>} />
-
-        <Route path="/organizer/store/:id/edit" element={<OrganizerRoute><EditStorePage /></OrganizerRoute>} />
-
-        <Route path="/organizer/team" element={<OrganizerRoute><TeamPage /></OrganizerRoute>} />
-
-        <Route path="/organizer/payouts" element={
-          <OrganizerRoute>
-            <PayoutsPage />
-          </OrganizerRoute>
-        } />
-
-
-        <Route path="/scanner" element={
-              <ScannerRoute>
-                <ScannerPage />
-              </ScannerRoute>
-            } />
+            <Route path="/scanner" element={
+                  <ScannerRoute>
+                    <ScannerPage />
+                  </ScannerRoute>
+                } />
 
           </Routes>
         </Router>
