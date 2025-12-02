@@ -1,4 +1,4 @@
-name: Build and Push Only
+name: Build, Push, and Deploy
 
 on:
   push:
@@ -7,8 +7,10 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: salimmwatsefu/yadi
+  POOL_TAG: yadi-production 
 
 jobs:
+  # JOB 1: BUILD & PUSH (Same as before)
   build-and-push:
     runs-on: ubuntu-latest
     permissions:
@@ -21,7 +23,6 @@ jobs:
       - name: Install Doppler CLI
         uses: dopplerhq/cli-action@v2
 
-      # Login to GitHub Container Registry
       - name: Log in to Registry
         uses: docker/login-action@v3
         with:
@@ -29,15 +30,52 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Build Frontend (Baking in env vars from Doppler)
       - name: Build and Push Frontend
         run: |
           doppler secrets download --no-file --format env --token ${{ secrets.DOPPLER_TOKEN }} > ./ticketsafi-web/.env
           docker build -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend:latest ./ticketsafi-web
           docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend:latest
 
-      # Build Backend
       - name: Build and Push Backend
         run: |
           docker build -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend:latest ./ticketsafi-backend
           docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend:latest
+
+  # JOB 2: AUTOMATED ROLLING REFRESH (The New Part)
+  refresh-pool:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install DigitalOcean CLI (doctl)
+        uses: digitalocean/action-doctl@v2
+        with:
+          token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+
+      - name: Trigger Rolling Update
+        run: |
+          echo "Fetching Droplets with tag: ${{ env.POOL_TAG }}..."
+          
+          # Get list of Droplet IDs associated with the pool tag
+          DROPLET_IDS=$(doctl compute droplet list --tag-name ${{ env.POOL_TAG }} --format ID --no-header)
+          
+          if [ -z "$DROPLET_IDS" ]; then
+            echo "No droplets found! Is the tag correct? Skipping refresh."
+            exit 0
+          fi
+
+          echo "Found Droplets: $DROPLET_IDS"
+          
+          # Loop through each droplet and delete it, waiting for recovery
+          for id in $DROPLET_IDS; do
+            echo "---------------------------------------------------"
+            echo "♻️  Destroying Droplet ID: $id to trigger Autoscale replacement..."
+            doctl compute droplet delete $id --force
+            
+            # WAIT TIME: 5 Minutes (300 seconds)
+            # This gives the Autoscale Pool time to notice the death, 
+            # spin up a new server, run the script, and pass the Load Balancer health check.
+            echo "⏳ Waiting 300 seconds for the pool to heal before touching the next server..."
+            sleep 300 
+          done
+          
+          echo "✅ Rolling Update Complete. All servers refreshed."
