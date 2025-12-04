@@ -2,13 +2,17 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Store as StoreIcon, ArrowRight } from 'lucide-react';
 import api from '../api/axios';
+import type { PaginatedResponse } from '../types';
+
 
 const StoresListPage = () => {
   const navigate = useNavigate();
   const [stores, setStores] = useState<any[]>([]);
 
   useEffect(() => {
-    api.get('/api/stores/').then(res => setStores(res.data));
+    api.get<PaginatedResponse<any>>('/api/stores/').then(res => {
+        setStores(res.data.results);
+    });
   }, []);
 
   return (

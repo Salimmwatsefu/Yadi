@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Search, Download, User, Mail, Calendar, DollarSign, CheckCircle, Users, ChevronDown, ChevronUp, Clock, Shield } from 'lucide-react';
+import { ArrowLeft, Search, Download, User, Mail, Calendar, DollarSign, CheckCircle, Users, ChevronDown, ChevronUp, Clock, Shield, ChevronLeft, ChevronRight } from 'lucide-react';
 import api from '../../api/axios';
 import { useEventDetails } from '../../hooks/useEventDetails';
 
@@ -32,6 +32,25 @@ const OrganizerEventDetailsPage = () => {
   const navigate = useNavigate();
   
   const { event, loading: eventLoading } = useEventDetails(id);
+
+  const handleExportCSV = () => {
+      if (!id || !api.defaults.baseURL) {
+          console.error("Cannot export: Event ID or Base URL is missing.");
+          return;
+      }
+      
+      // We MUST use the absolute URL (e.g., http://localhost:8000 or https://tickets.yadi.app)
+      const backendHost = api.defaults.baseURL.endsWith('/') 
+                            ? api.defaults.baseURL.slice(0, -1) 
+                            : api.defaults.baseURL;
+      
+      // Construct the full, absolute URL, ensuring the /api/ prefix is included
+      const exportUrl = `${backendHost}/api/organizer/events/${id}/export/`;
+
+      // Use window.location.href to force the browser to navigate and download the file, 
+      // bypassing the React Router.
+      window.location.href = exportUrl;
+  };
   
   const [attendees, setAttendees] = useState<Attendee[]>([]);
   const [loadingAttendees, setLoadingAttendees] = useState(true);
@@ -39,19 +58,50 @@ const OrganizerEventDetailsPage = () => {
   
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
 
-  useEffect(() => {
-    const fetchAttendees = async () => {
-      try {
-        const response = await api.get(`/api/organizer/events/${id}/attendees/`);
-        setAttendees(response.data);
-      } catch (err) {
-        console.error("Failed to load guest list", err);
-      } finally {
-        setLoadingAttendees(false);
-      }
+
+  // --- NEW PAGINATION STATE ---
+    const [currentPage, setCurrentPage] = useState(1);
+    const [paginationMeta, setPaginationMeta] = useState({
+        count: 0, // Total number of tickets
+        next: null,
+        previous: null,
+        totalPages: 1, 
+    });
+
+
+    useEffect(() => {
+        if (id) fetchAttendees(currentPage);
+    }, [id, currentPage]);
+
+
+
+  // --- FETCH FUNCTION (UPDATED) ---
+    const fetchAttendees = async (page: number) => {
+        setLoadingAttendees(true);
+        try {
+            // Send the page number in the request
+            const response = await api.get(`/api/organizer/events/${id}/attendees/?page=${page}`);
+            
+            // 1. Get results
+            setAttendees(response.data.results);
+            
+            // 2. Calculate Total Pages (using math.ceil)
+            const totalCount = response.data.count;
+            const pageSize = 10; // Must match Django's PAGE_SIZE
+            
+            setPaginationMeta({
+                count: totalCount,
+                next: response.data.next,
+                previous: response.data.previous,
+                totalPages: Math.ceil(totalCount / pageSize),
+            });
+
+        } catch (err) {
+            console.error("Failed to load guest list", err);
+        } finally {
+            setLoadingAttendees(false);
+        }
     };
-    if (id) fetchAttendees();
-  }, [id]);
 
   const groupedAttendees = useMemo(() => {
       const groups: Record<string, GroupedAttendee> = {};
@@ -146,7 +196,7 @@ const OrganizerEventDetailsPage = () => {
                 >
                     Edit Event
                 </button>
-                <button className="px-4 py-2 bg-white/5 border border-white/10 hover:bg-white/10 text-white rounded-lg text-sm font-medium transition-colors flex items-center">
+                <button onClick={handleExportCSV} className="px-4 py-2 bg-white/5 border border-white/10 hover:bg-white/10 text-white rounded-lg text-sm font-medium transition-colors flex items-center">
                     <Download className="w-4 h-4 mr-2" />
                     Export CSV
                 </button>
@@ -319,6 +369,30 @@ const OrganizerEventDetailsPage = () => {
                   </tbody>
               </table>
           </div>
+
+          {/* Pagination Controls at the bottom of the table */}
+        <div className="p-4 border-t border-white/5 flex justify-between items-center">
+             <p className="text-xs text-zinc-500">
+                Page {currentPage} of {paginationMeta.totalPages} | 
+                Total tickets: {paginationMeta.count}
+             </p>
+             <div className="flex gap-2">
+                 <button 
+                     onClick={() => setCurrentPage(prev => prev - 1)}
+                     disabled={!paginationMeta.previous}
+                     className="p-2 rounded-lg border border-white/10 hover:bg-white/5 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                 >
+                     <ChevronLeft className="w-4 h-4 text-white" />
+                 </button>
+                 <button 
+                     onClick={() => setCurrentPage(prev => prev + 1)}
+                     disabled={!paginationMeta.next}
+                     className="p-2 rounded-lg border border-white/10 hover:bg-white/5 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                 >
+                     <ChevronRight className="w-4 h-4 text-white" />
+                 </button>
+             </div>
+        </div>
       </div>
     </div>
   );

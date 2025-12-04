@@ -224,7 +224,7 @@ const EventDetailsPage = () => {
                                     <input
                                         type="number"
                                         min="1"
-                                        max="3" // FIX 3: Enforce max 3
+                                        max="10" // FIX 3: Enforce max 10
                                         // FIX 4: Use value={0 ? '' : quantity} to allow clearing, and let 1 be the final clipped value
                                         value={quantity === 0 ? '' : quantity} 
                                         disabled={false} // Unlocked
@@ -236,7 +236,7 @@ const EventDetailsPage = () => {
                                                 const val = parseInt(rawValue);
                                                 if (!isNaN(val)) {
                                                     // FIX 5: Ensure the value is clipped between 1 and 3
-                                                    setQuantity(Math.min(3, Math.max(1, val))); 
+                                                    setQuantity(Math.min(10, Math.max(1, val))); 
                                                 }
                                             }
                                         }}

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Store, ExternalLink, Loader2, Edit } from 'lucide-react';
 import api from '../../api/axios';
+import type { PaginatedResponse } from '../../types'
 
 const MyStoresPage = () => {
   const navigate = useNavigate();
@@ -9,8 +10,11 @@ const MyStoresPage = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.get('/api/stores/organizer/list/')
-       .then(res => setStores(res.data))
+    api.get<PaginatedResponse<any>>('/api/stores/organizer/list/')
+       .then(res => {
+           // FIX: Access the results array
+           setStores(res.data.results);
+       })
        .catch(err => console.error(err))
        .finally(() => setLoading(false));
   }, []);

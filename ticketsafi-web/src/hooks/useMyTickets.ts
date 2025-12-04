@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import api from '../api/axios';
+import type { PaginatedResponse } from '../types';
 
 export interface TicketSummary {
   id: string;
@@ -21,9 +22,9 @@ export const useMyTickets = () => {
     const fetchTickets = async () => {
       try {
         setLoading(true);
-        const response = await api.get<TicketSummary[]>('/api/tickets/');
+        const response = await api.get<PaginatedResponse<TicketSummary>>('/api/tickets/');
         
-        const mappedTickets = response.data.map(t => ({
+        const mappedTickets = response.data.results.map(t => ({
             ...t,
             // Ensure image URL is absolute
             event_image: t.event_image.startsWith('http') 

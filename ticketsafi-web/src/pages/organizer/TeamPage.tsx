@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Users, Plus, Trash2, Loader2, Copy, Check } from 'lucide-react';
 import api from '../../api/axios';
+import type { PaginatedResponse } from '../../types'
 
 interface ScannerUser {
     id: string;
@@ -28,9 +29,9 @@ const TeamPage = () => {
 
     const fetchScanners = async () => {
         try {
-            // We need a backend endpoint for this. For now, let's assume we can list them.
-            const res = await api.get('/api/organizer/team/scanners/');
-            setScanners(res.data);
+            const res = await api.get<PaginatedResponse<ScannerUser>>('/api/organizer/team/scanners/');
+            // FIX: Access the results array
+            setScanners(res.data.results);
         } catch (err) {
             console.error(err);
         } finally {

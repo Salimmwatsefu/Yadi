@@ -691,3 +691,39 @@ class ActivateGuestAccountView(APIView):
             return response
         
         return Response({"error": "Invalid or expired token"}, status=400)
+    
+
+
+import csv 
+from django.http import HttpResponse
+
+class ExportAttendeesCSVView(views.APIView):
+    """
+    Exports all attendees for a given event ID to a downloadable CSV file.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, id):
+        event = get_object_or_404(Event, id=id, organizer=request.user)
+        
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = f'attachment; filename="{event.title}_Guest_List.csv"'
+
+        writer = csv.writer(response)
+        
+        # 1. Write Header Row
+        writer.writerow([
+            'Ticket ID', 'Status', 'Attendee Name', 'Attendee Email', 
+            'Ticket Tier', 'Tier Price', 'Purchase Date', 'Checked In At'
+        ])
+
+        # 2. Fetch all tickets and write data rows
+        tickets = Ticket.objects.filter(event=event).values_list(
+            'id', 'status', 'attendee_name', 'attendee_email', 
+            'tier__name', 'tier__price', 'purchase_date', 'checked_in_at'
+        ).iterator() # Use iterator for memory efficiency on large datasets
+
+        for ticket in tickets:
+            writer.writerow(ticket)
+
+        return response

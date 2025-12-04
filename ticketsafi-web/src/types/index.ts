@@ -20,10 +20,18 @@ export interface Event {
   location: string;
   price: string; 
   imageUrl: string;
-  category: 'Concert' | 'Nightlife' | 'Festival' | 'Theatre';
+  category: 'CONCERT' | 'FESTIVAL' | 'NIGHTLIFE' | 'THEATRE' | 'SPORTS' | 'ARTS' | 'OTHER';
   isSellingFast?: boolean;
   description?: string;
   tiers?: TicketTier[];
   organizer_name?: string;
   store?: Store | null; 
+}
+
+
+export interface PaginatedResponse<T> {
+    count: number;
+    next: string | null;
+    previous: string | null;
+    results: T[]; // The actual array of data
 }

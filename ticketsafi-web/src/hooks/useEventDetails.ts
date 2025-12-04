@@ -11,6 +11,7 @@ interface BackendEventDetail {
     poster_image: string | null;
     description: string;
     organizer_name: string;
+    category: string; 
     tiers: {
         id: string;
         name: string;
@@ -53,7 +54,7 @@ export const useEventDetails = (eventId: string | undefined) => {
                         ? (data.poster_image.startsWith('http') ? data.poster_image : `${api.defaults.baseURL}${data.store.logo_image}`)
                         : 'https://placehold.co/600x400/18181b/ffffff?text=No+Image',
                     price: '0', // Not used in details header usually
-                    category: 'Concert',
+                    category: data.category as any,
                     description: data.description,
                     organizer_name: data.organizer_name,
                     tiers: data.tiers.map((t) => ({

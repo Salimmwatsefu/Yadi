@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import api from '../api/axios';
-import type { Event } from '../types';
+import type { Event, PaginatedResponse } from '../types';
 
 interface BackendEvent {
     id: string;
@@ -46,9 +46,9 @@ export const useEvents = (
                     }
                 }
 
-                const response = await api.get<BackendEvent[]>(`/api/events/?${params.toString()}`);
+                const response = await api.get<PaginatedResponse<BackendEvent>>(`/api/events/?${params.toString()}`);
                 
-                const mappedEvents: Event[] = response.data.map((item) => {
+                const mappedEvents: Event[] = response.data.results.map((item) => {
                     const d = new Date(item.start_datetime);
                     
                     // Manual formatting to ensure "Nov 27, 2025" format regardless of locale
